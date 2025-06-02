@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(mkdir:*)",
+      "Bash(npm run dev:*)",
+      "Bash(NODE_ENV=development node --loader tsx/esm server/index.ts)",
+      "Bash(NODE_ENV=development node --import tsx/esm server/index.ts)",
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(ls:*)",
+      "Bash(node:*)",
+      "Bash(npx tsx:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(pkill:*)",
+      "Bash(npm run check:*)",
+      "Bash(rg:*)",
+      "Bash(sed:*)",
+      "Bash(true)",
+      "Bash(npm run:*)",
+      "Bash(grep:*)"
+    ],
+    "deny": []
+  }
+}

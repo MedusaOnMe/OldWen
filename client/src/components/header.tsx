@@ -1,94 +1,150 @@
 import { Button } from "@/components/ui/button";
-import { ChartLine, Menu, Wallet } from "lucide-react";
+import { ChartLine, Menu, X, Rocket, Zap } from "lucide-react";
 import { useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { useLocation } from "wouter";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { connected } = useWallet();
+  const [location, setLocation] = useLocation();
 
-  const handleConnectWallet = () => {
-    // Wallet connection logic would go here
-    console.log("Connect wallet clicked");
-  };
+  const isActive = (path: string) => location === path;
+
+  const navItems = [
+    { href: '/', label: 'Home', icon: ChartLine },
+    { href: '/campaigns', label: 'Browse', icon: Menu },
+    { href: '/create-campaign', label: 'Create', icon: Zap },
+  ];
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-crypto rounded-lg flex items-center justify-center">
-              <ChartLine className="text-white text-sm" size={16} />
-            </div>
-            <span className="text-xl font-bold text-gray-900">Wendex</span>
-          </div>
-
-          {/* Navigation Links - Desktop */}
-          <div className="hidden md:flex items-center space-x-8">
-            <a href="#" className="text-gray-600 hover:text-indigo-600 transition-colors font-medium">
-              Projects
-            </a>
-            <a href="#" className="text-gray-600 hover:text-indigo-600 transition-colors font-medium">
-              Analytics
-            </a>
-            <a href="#" className="text-gray-600 hover:text-indigo-600 transition-colors font-medium">
-              How it Works
-            </a>
-            <a href="#" className="text-gray-600 hover:text-indigo-600 transition-colors font-medium">
-              About
-            </a>
-          </div>
-
-          {/* Wallet Connect Button & Mobile Menu */}
-          <div className="flex items-center space-x-4">
-            <Button
-              onClick={handleConnectWallet}
-              variant="outline"
-              className="hidden sm:inline-flex items-center border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white"
+    <>
+      {/* Backdrop blur for glassmorphism effect */}
+      <div className="fixed top-0 left-0 right-0 h-20 bg-gray-900/30 backdrop-blur-xl border-b border-gray-800/50 z-40" />
+      
+      <header className="fixed top-0 left-0 right-0 z-50">
+        <nav className="container mx-auto px-6">
+          <div className="flex justify-between items-center h-20">
+            {/* Logo */}
+            <div 
+              className="flex items-center space-x-3 cursor-pointer group" 
+              onClick={() => setLocation("/")}
             >
-              <Wallet className="mr-2" size={16} />
-              Connect Wallet
-            </Button>
-            
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-xl blur-lg" />
+                <div className="relative bg-gradient-to-r from-purple-600 to-pink-600 p-2 rounded-xl">
+                  <Rocket className="h-6 w-6 text-white transition-transform group-hover:rotate-12" />
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-2xl font-black bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                  Wendex
+                </span>
+                <span className="text-xs text-purple-400 font-medium -mt-1">
+                  CROWDFUNDING
+                </span>
+              </div>
+            </div>
+
+            {/* Navigation Links - Desktop */}
+            <div className="hidden lg:flex items-center space-x-1">
+              {navItems.map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <a 
+                    key={item.href}
+                    href={item.href} 
+                    className={`relative flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 group ${
+                      isActive(item.href)
+                        ? 'text-white bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                    onClick={(e) => { e.preventDefault(); setLocation(item.href); }}
+                  >
+                    <IconComponent className="w-4 h-4" />
+                    <span>{item.label}</span>
+                    {isActive(item.href) && (
+                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-purple-400 rounded-full" />
+                    )}
+                  </a>
+                );
+              })}
+            </div>
+
+            {/* Actions - Desktop */}
+            <div className="hidden lg:flex items-center space-x-4">
+              <button
+                className="relative px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl overflow-hidden group transition-all duration-300 hover:shadow-2xl hover:shadow-purple-600/25 hover:scale-105"
+                onClick={() => setLocation("/create-campaign")}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-700 to-pink-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative flex items-center space-x-2">
+                  <Zap className="w-4 h-4" />
+                  <span>Launch Campaign</span>
+                </div>
+              </button>
+              
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-xl blur-lg" />
+                <WalletMultiButton className="relative !bg-gray-900/50 !border !border-gray-700 !text-white hover:!bg-gray-800/50 hover:!border-gray-600 !rounded-xl !font-medium !px-6 !py-3 !backdrop-blur-sm !transition-all" />
+              </div>
+            </div>
+
             {/* Mobile menu button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden"
+            <button
+              className="lg:hidden relative p-3 rounded-xl bg-gray-900/50 border border-gray-700 text-gray-300 hover:text-white hover:bg-gray-800/50 transition-all"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
-              <Menu size={20} />
-            </Button>
+              {isMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </button>
           </div>
-        </div>
+        </nav>
 
         {/* Mobile Navigation Menu */}
         {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-100">
-            <div className="flex flex-col space-y-3">
-              <a href="#" className="text-gray-600 hover:text-indigo-600 transition-colors font-medium px-2 py-1">
-                Projects
-              </a>
-              <a href="#" className="text-gray-600 hover:text-indigo-600 transition-colors font-medium px-2 py-1">
-                Analytics
-              </a>
-              <a href="#" className="text-gray-600 hover:text-indigo-600 transition-colors font-medium px-2 py-1">
-                How it Works
-              </a>
-              <a href="#" className="text-gray-600 hover:text-indigo-600 transition-colors font-medium px-2 py-1">
-                About
-              </a>
-              <Button
-                onClick={handleConnectWallet}
-                variant="outline"
-                className="mt-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white"
-              >
-                <Wallet className="mr-2" size={16} />
-                Connect Wallet
-              </Button>
+          <div className="lg:hidden mt-2 mx-6 mb-6">
+            <div className="bg-gray-900/90 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 space-y-4">
+              {navItems.map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <a 
+                    key={item.href}
+                    href={item.href} 
+                    className={`flex items-center space-x-3 p-4 rounded-xl transition-all ${
+                      isActive(item.href)
+                        ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 text-white'
+                        : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                    }`}
+                    onClick={(e) => { e.preventDefault(); setLocation(item.href); setIsMenuOpen(false); }}
+                  >
+                    <IconComponent className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </a>
+                );
+              })}
+              
+              <div className="pt-4 border-t border-gray-800 space-y-3">
+                <button
+                  className="w-full flex items-center justify-center space-x-2 p-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all"
+                  onClick={() => { setLocation("/create-campaign"); setIsMenuOpen(false); }}
+                >
+                  <Zap className="w-5 h-5" />
+                  <span>Launch Campaign</span>
+                </button>
+                
+                <div className="px-2">
+                  <WalletMultiButton className="!w-full !bg-gray-800/50 !border !border-gray-700 !text-white hover:!bg-gray-700/50 !rounded-xl !font-medium !px-6 !py-3" />
+                </div>
+              </div>
             </div>
           </div>
         )}
-      </nav>
-    </header>
+      </header>
+    </>
   );
 }

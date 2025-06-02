@@ -1,6 +1,13 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import campaignRoutes from "./routes/campaigns";
+import balanceRoutes from "./routes/balances";
+import adminRoutes from "./routes/admin";
+import webhookRoutes from "./routes/webhook";
+import { validateToken } from "./routes/helius";
+import { initializeWebSocket } from "./services/websocket";
+import { schedulerService } from "./services/scheduler";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
@@ -28,6 +35,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helius token validation endpoint
+  app.post("/api/helius/validate-token", validateToken);
+
+  // Register all API routes
+  app.use("/api", campaignRoutes);
+  app.use("/api", balanceRoutes);
+  app.use("/api/admin", adminRoutes);
+  app.use("/api", webhookRoutes);
+
   const httpServer = createServer(app);
+  
+  // Initialize WebSocket server
+  initializeWebSocket(httpServer);
+  
+  // Start scheduler service
+  schedulerService.start();
+  
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    schedulerService.stop();
+    process.exit(0);
+  });
+  
+  process.on('SIGINT', () => {
+    schedulerService.stop();
+    process.exit(0);
+  });
+  
   return httpServer;
 }

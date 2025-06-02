@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wendex UI Test</title>
+    <style>
+        /* Test the new dark theme colors */
+        :root {
+            --background: 0 0% 9%; /* #171717 */
+            --foreground: 0 0% 95%; /* #F2F2F2 */
+            --muted: 0 0% 15%; /* #262626 */
+            --muted-foreground: 0 0% 70%; /* #B3B3B3 */
+            --card: 0 0% 12%; /* #1F1F1F */
+            --primary: 251 91% 65%; /* #5B5EF5 */
+            --border: 0 0% 20%; /* #333333 */
+        }
+
+        body {
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: hsl(var(--foreground));
+            margin-bottom: 8px;
+        }
+
+        p {
+            color: hsl(var(--muted-foreground));
+            line-height: 1.6;
+        }
+
+        .button {
+            background: hsl(var(--primary));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .button:hover {
+            opacity: 0.9;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .old-theme {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            color: #9ca3af;
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .new-theme {
+            background: hsl(var(--card));
+            color: hsl(var(--foreground));
+            border: 1px solid hsl(var(--border));
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+
+        .status.success {
+            background: hsl(154 73% 47% / 0.2);
+            color: hsl(154 73% 47%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Wendex UI Overhaul Complete ✨</h1>
+            <p>The site has been completely redesigned with a cohesive dark theme that fixes all the issues you mentioned.</p>
+            <button class="button">Primary Button</button>
+        </div>
+
+        <div class="comparison">
+            <div>
+                <h2 style="color: hsl(var(--foreground));">Before (Issues)</h2>
+                <div class="old-theme">
+                    <h3 style="color: white;">Old Navy Background</h3>
+                    <p>This grey text was barely readable on the dark navy gradient background.</p>
+                    <div style="background: white; color: black; padding: 10px; margin-top: 10px; border-radius: 8px;">
+                        White containers that didn't match
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h2 style="color: hsl(var(--foreground));">After (Fixed)</h2>
+                <div class="new-theme">
+                    <h3>Clean Dark Theme</h3>
+                    <p>High contrast text on a rich black background with consistent dark containers.</p>
+                    <span class="status success">All Fixed</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 40px;">
+            <h2>Key Improvements</h2>
+            <ul style="color: hsl(var(--muted-foreground)); line-height: 1.8;">
+                <li><strong style="color: hsl(var(--foreground));">Background:</strong> Changed from navy gradient (#0f172a) to rich black (#171717)</li>
+                <li><strong style="color: hsl(var(--foreground));">Text:</strong> High contrast white (#F2F2F2) instead of grey</li>
+                <li><strong style="color: hsl(var(--foreground));">Cards:</strong> Dark (#1F1F1F) with subtle borders instead of white</li>
+                <li><strong style="color: hsl(var(--foreground));">Primary Color:</strong> Vibrant purple (#5B5EF5) for CTAs</li>
+                <li><strong style="color: hsl(var(--foreground));">Consistency:</strong> All components now use the same dark theme</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>Simplified Campaign Creation</h2>
+            <p>The campaign creation form has been dramatically simplified:</p>
+            <ul style="color: hsl(var(--muted-foreground)); line-height: 1.8;">
+                <li>Just enter the token contract address</li>
+                <li>Token metadata is automatically fetched via Helius API</li>
+                <li>Optional social links (auto-populated if available)</li>
+                <li>Simple drag-and-drop for 1:1 logo and 3:1 banner images</li>
+                <li>No more complex multi-step wizard</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,226 @@
+/* Modern Theme - Clean, Professional, High Contrast */
+
+/* Force light mode by default for better readability */
+html {
+  color-scheme: light;
+}
+
+/* Override any dark mode attempts */
+body {
+  background: white !important;
+  color: #111827 !important;
+}
+
+/* Modern Component Overrides */
+.wendex-card,
+.crypto-card,
+.glass {
+  background: white !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+.wendex-card:hover,
+.crypto-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Fix all text contrast issues */
+p, span, div {
+  color: inherit;
+}
+
+.text-gray-300,
+.text-gray-400,
+.text-gray-500,
+.text-white {
+  color: #374151 !important;
+}
+
+/* Modern Buttons */
+.crypto-button,
+.wendex-button-primary {
+  background: linear-gradient(135deg, #6B46C1 0%, #EC4899 100%) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 4px 15px 0 rgba(107, 70, 193, 0.3) !important;
+}
+
+.crypto-button:hover,
+.wendex-button-primary:hover {
+  box-shadow: 0 6px 20px 0 rgba(107, 70, 193, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Fix Inputs */
+.crypto-input,
+.wendex-input {
+  background: #f9fafb !important;
+  border: 1px solid #e5e7eb !important;
+  color: #111827 !important;
+}
+
+.crypto-input::placeholder,
+.wendex-input::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Navigation */
+.crypto-nav {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+.crypto-nav-item {
+  color: #6b7280 !important;
+}
+
+.crypto-nav-item:hover {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+.crypto-nav-item.active {
+  color: #6B46C1 !important;
+  background: rgba(107, 70, 193, 0.1) !important;
+}
+
+/* Progress Bars */
+.crypto-progress {
+  background: #f3f4f6 !important;
+}
+
+.crypto-progress-bar {
+  background: linear-gradient(135deg, #6B46C1 0%, #EC4899 100%) !important;
+}
+
+/* Badges */
+.crypto-badge {
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* Alerts */
+.bg-red-500\/20 {
+  background: #fee2e2 !important;
+}
+
+.bg-green-500\/20 {
+  background: #d1fae5 !important;
+}
+
+.bg-blue-500\/20 {
+  background: #dbeafe !important;
+}
+
+.text-red-200 {
+  color: #dc2626 !important;
+}
+
+.text-green-200 {
+  color: #059669 !important;
+}
+
+.text-blue-200 {
+  color: #2563eb !important;
+}
+
+/* Modal Overrides */
+.crypto-modal {
+  background: rgba(0, 0, 0, 0.5) !important;
+}
+
+.crypto-modal-content {
+  background: white !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* Wallet Adapter */
+.wallet-adapter-button {
+  background: linear-gradient(135deg, #6B46C1 0%, #EC4899 100%) !important;
+  color: white !important;
+}
+
+.wallet-adapter-modal {
+  background: white !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.wallet-adapter-modal-title {
+  color: #111827 !important;
+}
+
+.wallet-adapter-modal-list li button {
+  background: #f9fafb !important;
+  border: 1px solid #e5e7eb !important;
+  color: #111827 !important;
+}
+
+.wallet-adapter-modal-list li button:hover {
+  background: #f3f4f6 !important;
+  border-color: #6B46C1 !important;
+}
+
+/* Campaign Specific */
+.campaign-card {
+  background: white !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.campaign-card:hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Fix all gradient text */
+.text-gradient-crypto {
+  background: linear-gradient(135deg, #6B46C1 0%, #EC4899 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Modern Card Design */
+.card {
+  background: white !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Headers */
+h1, h2, h3, h4, h5, h6 {
+  color: #111827 !important;
+}
+
+/* Links */
+a {
+  color: #6B46C1 !important;
+}
+
+a:hover {
+  color: #553C9A !important;
+}
+
+/* Dark mode overrides - force light theme */
+.dark body,
+body.dark,
+html.dark body {
+  background: white !important;
+  color: #111827 !important;
+}
+
+.dark .card,
+.dark .crypto-card,
+.dark .wendex-card {
+  background: white !important;
+  border-color: #e5e7eb !important;
+}
+
+/* Remove all backdrop filters on dark backgrounds */
+.backdrop-blur-lg,
+.backdrop-blur-xl,
+.backdrop-blur-2xl {
+  backdrop-filter: none !important;
+  background: white !important;
+}

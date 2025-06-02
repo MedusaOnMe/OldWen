@@ -1,41 +1,41 @@
-import { BarChart, Shield, Users, Plug, Network, Search } from "lucide-react";
+import { BarChart, Shield, Users, Rocket, TrendingUp, Zap } from "lucide-react";
 
 const features = [
   {
-    icon: BarChart,
-    title: "Real-time Analytics",
-    description: "Track project performance with live data integration from DexScreener and comprehensive funding analytics.",
-    color: "indigo"
+    icon: TrendingUp,
+    title: "Enhanced Token Info",
+    description: "Get your token verified with enhanced information on DexScreener for increased visibility and trust.",
+    gradient: "from-purple-500 to-indigo-600"
+  },
+  {
+    icon: Zap,
+    title: "Token Boosts",
+    description: "Boost your token's ranking on DexScreener to reach more traders and increase exposure.",
+    gradient: "from-yellow-500 to-orange-600"
   },
   {
     icon: Shield,
-    title: "Secure Funding",
-    description: "Smart contract-based escrow system ensures funds are protected and released based on milestone achievements.",
-    color: "emerald"
+    title: "Secure Escrow",
+    description: "All funds are held in secure escrow wallets until campaign goals are met, ensuring transparency.",
+    gradient: "from-green-500 to-emerald-600"
   },
   {
     icon: Users,
-    title: "Community Driven",
-    description: "Governance tokens allow community members to vote on project listings and platform improvements.",
-    color: "amber"
+    title: "Community Powered",
+    description: "Rally your community to crowdfund DexScreener services together, making premium features accessible.",
+    gradient: "from-blue-500 to-cyan-600"
   },
   {
-    icon: Plug,
-    title: "DexScreener Integration",
-    description: "Seamless integration with DexScreener for live market data, token analytics, and trading insights.",
-    color: "purple"
+    icon: BarChart,
+    title: "Real-time Tracking",
+    description: "Monitor campaign progress in real-time with transparent contribution tracking and updates.",
+    gradient: "from-pink-500 to-rose-600"
   },
   {
-    icon: Network,
-    title: "Multi-Chain Support",
-    description: "Support for Ethereum, BSC, Polygon, and other major blockchains for maximum accessibility.",
-    color: "blue"
-  },
-  {
-    icon: Search,
-    title: "Project Vetting",
-    description: "Comprehensive due diligence process including smart contract audits and team verification.",
-    color: "red"
+    icon: Rocket,
+    title: "Instant Activation",
+    description: "Services are automatically purchased and activated once funding goals are reached.",
+    gradient: "from-indigo-500 to-purple-600"
   }
 ];
 
@@ -86,15 +86,16 @@ const colorClasses = {
 
 export default function Features() {
   return (
-    <section className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="section-minimal bg-white">
+      <div className="container-minimal">
         {/* Section Header */}
         <div className="text-center space-y-4 mb-16">
-          <h2 className="text-3xl lg:text-4xl font-bold text-gray-900">
-            Why Choose Wendex?
+          <h2 className="heading-2">
+            Everything You Need to
+            <span className="block">Boost Your Token</span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Built for the DeFi ecosystem with advanced analytics, secure funding mechanisms, and seamless integration with DexScreener data.
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+            Leverage the power of community crowdfunding to unlock premium DexScreener features for your token
           </p>
         </div>
 
@@ -102,19 +103,20 @@ export default function Features() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => {
             const Icon = feature.icon;
-            const colors = colorClasses[feature.color as keyof typeof colorClasses];
             
             return (
               <div
                 key={index}
-                className={`group p-6 bg-white rounded-xl border border-gray-200 ${colors.border} hover:shadow-lg transition-all duration-300`}
+                className="feature-minimal"
               >
                 <div className="space-y-4">
-                  <div className={`w-12 h-12 ${colors.bg} rounded-lg flex items-center justify-center ${colors.hoverBg} transition-all duration-300`}>
-                    <Icon className={`${colors.text} ${colors.hoverText} text-xl transition-all duration-300`} size={24} />
+                  {/* Icon */}
+                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Icon className="w-6 h-6 text-gray-700" />
                   </div>
+                  
                   <h3 className="text-xl font-semibold text-gray-900">{feature.title}</h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 leading-relaxed">
                     {feature.description}
                   </p>
                 </div>
@@ -123,6 +125,7 @@ export default function Features() {
           })}
         </div>
       </div>
+
     </section>
   );
 }

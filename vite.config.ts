@@ -23,9 +23,21 @@ export default defineConfig({
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
   },
+  optimizeDeps: {
+    exclude: ['viem'],
+    include: ['buffer']
+  },
+  define: {
+    global: 'globalThis',
+    'process.env': 'import.meta.env',
+    'import.meta.env.VITE_HELIUS_API_KEY': JSON.stringify(process.env.HELIUS_API_KEY),
+  },
   root: path.resolve(import.meta.dirname, "client"),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      external: ['viem', 'viem/chains'],
+    },
   },
 });
