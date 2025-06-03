@@ -147,8 +147,8 @@ class HeliusService {
   private isProcessingQueue: boolean = false;
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_HELIUS_API_KEY || import.meta.env.HELIUS_API_KEY || '';
-    this.baseUrl = import.meta.env.VITE_HELIUS_RPC_ENDPOINT || 'https://rpc.helius.xyz';
+    this.apiKey = import.meta.env.VITE_HELIUS_API_KEY || import.meta.env.HELIUS_API_KEY || '8349bc43-3182-420a-bade-44ea90bf1c53';
+    this.baseUrl = 'https://api.helius.xyz';
     
     if (!this.apiKey) {
       console.warn('Helius API key not configured. Token validation will use fallback methods.');
@@ -260,12 +260,19 @@ class HeliusService {
    * Validates a Solana token contract address and retrieves metadata
    */
   async validateToken(contractAddress: string): Promise<TokenValidationResult> {
-    console.log(`[Helius API] Validating token: ${contractAddress}`);
+    console.log(`[Client Helius API] ========== START TOKEN VALIDATION ==========`);
+    console.log(`[Client Helius API] Validating token: ${contractAddress}`);
+    console.log(`[Client Helius API] API Key configured:`, this.apiKey ? `${this.apiKey.substring(0, 8)}...` : 'NOT SET');
+    console.log(`[Client Helius API] Environment variables:`, {
+      VITE_HELIUS_API_KEY: import.meta.env.VITE_HELIUS_API_KEY ? 'SET' : 'NOT SET',
+      HELIUS_API_KEY: import.meta.env.HELIUS_API_KEY ? 'SET' : 'NOT SET'
+    });
     
     try {
       // Basic address validation
       if (!contractAddress || contractAddress.length < 32 || contractAddress.length > 44) {
-        console.log(`[Helius API] Invalid address format: ${contractAddress}`);
+        console.log(`[Client Helius API] ERROR: Invalid address format`);
+        console.log(`[Client Helius API] Address length:`, contractAddress.length);
         return {
           isValid: false,
           error: 'Invalid Solana address format',
@@ -273,12 +280,14 @@ class HeliusService {
         };
       }
 
-      // Use basic validation for now (server endpoint has issues)
-      console.log(`[Helius API] Using basic validation (server issues)`);
-      return await this.validateTokenBasic(contractAddress);
+      // NO FALLBACK - Try server endpoint for real data
+      console.log(`[Client Helius API] Calling server endpoint for real Helius data`);
+      return await this.validateTokenViaServer(contractAddress);
 
     } catch (error) {
-      console.error('Token validation error:', error);
+      console.error('[Client Helius API] Token validation error:', error);
+      console.error('[Client Helius API] Error stack:', (error as any).stack);
+      console.log(`[Client Helius API] ========== END TOKEN VALIDATION ERROR ==========`);
       return {
         isValid: false,
         error: 'Token validation failed',
@@ -288,142 +297,161 @@ class HeliusService {
   }
 
   /**
-   * Basic client-side validation that works without API calls
+   * Validates token via server endpoint
    */
-  private async validateTokenBasic(contractAddress: string): Promise<TokenValidationResult> {
+  private async validateTokenViaServer(contractAddress: string): Promise<TokenValidationResult> {
     try {
-      console.log(`[Helius API] Starting basic validation for: ${contractAddress}`);
+      console.log(`[Client Helius API] Making request to server endpoint`);
+      console.log(`[Client Helius API] POST /api/helius/validate-token`);
+      console.log(`[Client Helius API] Request body:`, { contractAddress });
       
-      // Basic Solana address validation using regex
-      const isValidAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(contractAddress);
-      console.log(`[Helius API] Address regex validation result: ${isValidAddress}`);
-      
-      if (!isValidAddress) {
-        console.log(`[Helius API] Address failed regex validation`);
-        return {
-          isValid: false,
-          error: 'Invalid Solana address format',
-          contractAddress
-        };
-      }
-
-      // Extract token info from address patterns (pump.fun, etc.)
-      let tokenName = 'Unknown Token';
-      let tokenSymbol = 'TOKEN';
-      
-      if (contractAddress.endsWith('pump')) {
-        tokenName = 'Pump.fun Token';
-        tokenSymbol = 'PUMP';
-        console.log(`[Helius API] Detected pump.fun token`);
-      } else {
-        // Use last 4 characters of address as symbol
-        tokenSymbol = contractAddress.slice(-4).toUpperCase();
-        tokenName = `Token ${tokenSymbol}`;
-        console.log(`[Helius API] Using last 4 chars as symbol: ${tokenSymbol}`);
-      }
-
-      const metadata = {
-        name: tokenName,
-        symbol: tokenSymbol,
-        description: `Solana token at address ${contractAddress}`,
-        image: '', // No image available
-        verified: false,
-        supply: undefined,
-        decimals: 9
-      };
-
-      console.log(`[Helius API] Generated metadata:`, metadata);
-
-      const result = {
-        isValid: true,
-        metadata,
-        exists: true,
+      const response = await axios.post('/api/helius/validate-token', {
         contractAddress
-      };
-
-      console.log(`[Helius API] Basic validation successful, returning:`, result);
-      return result;
-
-    } catch (error) {
-      console.error(`[Helius API] Basic validation error:`, error);
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000 // 15 second timeout
+      });
+      
+      console.log(`[Client Helius API] Server response status:`, response.status);
+      console.log(`[Client Helius API] Server response data:`, JSON.stringify(response.data, null, 2));
+      
+      if (response.data && response.data.isValid) {
+        console.log(`[Client Helius API] Token validated successfully via server`);
+        console.log(`[Client Helius API] ========== END TOKEN VALIDATION SUCCESS ==========`);
+        return response.data;
+      }
+      
+      console.log(`[Client Helius API] Server returned invalid token`);
+      console.log(`[Client Helius API] ========== END TOKEN VALIDATION INVALID ==========`);
+      return response.data;
+      
+    } catch (error: any) {
+      console.error(`[Client Helius API] Server request failed:`, error);
+      console.error(`[Client Helius API] Error response:`, error.response?.data);
+      console.error(`[Client Helius API] Error status:`, error.response?.status);
+      
+      // NO FALLBACK - Return error
+      console.log(`[Client Helius API] NO FALLBACK - Returning error`);
+      console.log(`[Client Helius API] ========== END TOKEN VALIDATION SERVER ERROR ==========`);
+      
       return {
         isValid: false,
-        error: 'Address validation failed',
-        contractAddress
+        error: error.response?.data?.error || 'Server validation failed',
+        contractAddress,
+        details: error.response?.data?.details
       };
     }
   }
 
   /**
-   * Fallback validation method when Helius API is not available
+   * Validates token using correct Helius token metadata API
    */
-  private async validateTokenFallback(contractAddress: string): Promise<TokenValidationResult> {
+  private async validateTokenWithHelius(contractAddress: string): Promise<TokenValidationResult> {
     try {
-      // Basic Solana address validation using built-in validation
-      const isValidAddress = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(contractAddress);
+      console.log(`[Client Helius API] Fetching token metadata from Helius API for: ${contractAddress}`);
       
-      if (!isValidAddress) {
+      const apiUrl = `https://api.helius.xyz/v0/token-metadata?api-key=${this.apiKey}`;
+      const requestPayload = {
+        mintAccounts: [contractAddress]
+      };
+      
+      console.log(`[Client Helius API] Making request to:`, apiUrl.replace(this.apiKey, 'API_KEY_HIDDEN'));
+      console.log(`[Client Helius API] Request payload:`, requestPayload);
+      
+      const response = await axios.post(
+        apiUrl,
+        requestPayload,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
+        }
+      );
+
+      console.log(`[Client Helius API] Response status:`, response.status);
+      console.log(`[Client Helius API] Response data:`, response.data);
+
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        const tokenData = response.data[0];
+        console.log(`[Client Helius API] Token data found:`, tokenData);
+        
+        const onChainMetadata = tokenData.onChainMetadata;
+        const offChainMetadata = tokenData.offChainMetadata;
+        
+        if (!onChainMetadata && !offChainMetadata) {
+          return {
+            isValid: false,
+            error: 'Token metadata not found',
+            contractAddress
+          };
+        }
+
+        const metadata: TokenMetadata = {
+          name: offChainMetadata?.name || onChainMetadata?.data?.name || 'Unknown Token',
+          symbol: offChainMetadata?.symbol || onChainMetadata?.data?.symbol || 'UNKNOWN',
+          description: offChainMetadata?.description || onChainMetadata?.data?.uri || '',
+          image: offChainMetadata?.image || '',
+          supply: onChainMetadata?.supply ? parseInt(onChainMetadata.supply.toString()) : undefined,
+          decimals: onChainMetadata?.decimals || 9,
+          verified: onChainMetadata?.primarySaleHappened || false,
+          mintAuthority: onChainMetadata?.mintAuthority,
+          freezeAuthority: onChainMetadata?.freezeAuthority
+        };
+
+        // Extract social links from off-chain metadata
+        if (offChainMetadata?.attributes) {
+          const socialLinks: any = {};
+          offChainMetadata.attributes.forEach((attr: any) => {
+            if (attr.trait_type === 'website') socialLinks.website = attr.value;
+            if (attr.trait_type === 'twitter') socialLinks.twitter = attr.value;
+            if (attr.trait_type === 'telegram') socialLinks.telegram = attr.value;
+            if (attr.trait_type === 'discord') socialLinks.discord = attr.value;
+          });
+          if (Object.keys(socialLinks).length > 0) {
+            metadata.socialLinks = socialLinks;
+            metadata.extensions = socialLinks;
+          }
+        }
+
+        console.log(`[Client Helius API] Token validated successfully:`, metadata);
+
         return {
-          isValid: false,
-          error: 'Invalid Solana address format',
+          isValid: true,
+          metadata,
+          exists: true,
           contractAddress
         };
       }
 
-      // Use DAS API endpoint for token metadata
-      console.log(`[Helius API] Using DAS API for token: ${contractAddress}`);
-      
-      try {
-        const response = await axios.post(
-          'https://api.helius.xyz/v0/token-metadata',
-          {},
-          {
-            headers: { 
-              'Content-Type': 'application/json'
-            },
-            params: {
-              'api-key': '8349bc43-3182-420a-bade-44ea90bf1c53'
-            },
-            timeout: 10000
-          }
-        );
-
-        if (response.data.result) {
-          const metadata = this.parseTokenMetadata(response.data.result);
-          console.log(`[Helius API] Token metadata retrieved:`, metadata);
-          
-          return {
-            isValid: true,
-            metadata,
-            exists: true,
-            contractAddress
-          };
-        }
-      } catch (e) {
-        console.log(`[Helius API] DAS API failed, using basic validation`);
-      }
-
-      // Return basic validation without metadata
+      // No token data found
+      console.log('[Client Helius API] No token data in response array');
       return {
-        isValid: true,
-        metadata: {
-          name: 'Unknown Token',
-          symbol: 'UNKNOWN',
-          description: 'Token metadata not available',
-          verified: false
-        },
-        exists: true,
+        isValid: false,
+        error: 'Token not found in Helius database',
         contractAddress
       };
 
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[Client Helius API] Token metadata API error:', error);
+      console.error('[Client Helius API] Error response:', error.response?.data);
+      
+      // Return the actual error
       return {
         isValid: false,
-        error: 'Address validation failed',
+        error: error.response?.data?.error || error.message || 'Failed to fetch token metadata',
         contractAddress
       };
     }
   }
+
+  // REMOVED: validateTokenEnhanced - NO FALLBACKS
+
+  // REMOVED: validateTokenBasic - NO FALLBACKS
+
+  // REMOVED: validateTokenFallback - NO FALLBACKS
 
   /**
    * Parses Helius asset response into standardized token metadata

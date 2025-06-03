@@ -12,18 +12,25 @@ var __export = (target, all) => {
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
+import dotenv from "dotenv";
 var app, db, auth, collections;
 var init_firebase = __esm({
   "server/lib/firebase.ts"() {
     "use strict";
+    dotenv.config();
     try {
       const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
       const projectId = process.env.FIREBASE_PROJECT_ID;
+      console.log("[Firebase Init] serviceAccountJson exists:", !!serviceAccountJson);
+      console.log("[Firebase Init] projectId:", projectId);
       if (serviceAccountJson && projectId) {
+        console.log("[Firebase Init] Parsing service account JSON...");
         const serviceAccount = JSON.parse(serviceAccountJson);
+        console.log("[Firebase Init] Service account parsed, project_id:", serviceAccount.project_id);
         if (!serviceAccount.project_id) {
           serviceAccount.project_id = projectId;
         }
+        console.log("[Firebase Init] Initializing Firebase app...");
         app = initializeApp({
           credential: cert(serviceAccount),
           projectId
@@ -51,6 +58,9 @@ var init_firebase = __esm({
               orderBy: (field2, direction) => ({
                 get: async () => ({ docs: [], empty: true, size: 0 }),
                 limit: (n) => ({ get: async () => ({ docs: [], empty: true, size: 0 }) })
+              }),
+              where: (field2, op2, value2) => ({
+                get: async () => ({ docs: [], empty: true, size: 0 })
               })
             }),
             orderBy: (field, direction) => ({
@@ -91,6 +101,9 @@ var init_firebase = __esm({
             orderBy: (field2, direction) => ({
               get: async () => ({ docs: [], empty: true, size: 0 }),
               limit: (n) => ({ get: async () => ({ docs: [], empty: true, size: 0 }) })
+            }),
+            where: (field2, op2, value2) => ({
+              get: async () => ({ docs: [], empty: true, size: 0 })
             })
           }),
           orderBy: (field, direction) => ({
@@ -129,6 +142,7 @@ __export(solana_exports, {
   decryptPrivateKey: () => decryptPrivateKey,
   fallbackConnection: () => fallbackConnection,
   generateCampaignWallet: () => generateCampaignWallet,
+  getPrivateKeyForAdmin: () => getPrivateKeyForAdmin,
   getTransactionHistory: () => getTransactionHistory,
   getUSDCBalance: () => getUSDCBalance,
   monitorWalletBalance: () => monitorWalletBalance
@@ -155,6 +169,16 @@ async function decryptPrivateKey(encryptedKey) {
   const decryptedHex = CryptoJS.AES.decrypt(encryptedKey, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8);
   const privateKeyBytes = Buffer.from(decryptedHex, "hex");
   return Keypair.fromSecretKey(new Uint8Array(privateKeyBytes));
+}
+async function getPrivateKeyForAdmin(campaignId) {
+  const walletDoc = await db.collection(collections.wallets).doc(campaignId).get();
+  if (!walletDoc.exists) {
+    throw new Error("Campaign wallet not found");
+  }
+  const walletData = walletDoc.data();
+  const decryptedHex = CryptoJS.AES.decrypt(walletData.encryptedPrivateKey, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8);
+  console.log(`[SECURITY] Private key accessed for campaign ${campaignId} at ${(/* @__PURE__ */ new Date()).toISOString()}`);
+  return decryptedHex;
 }
 async function getUSDCBalance(walletAddress) {
   try {
@@ -218,8 +242,12 @@ var init_solana = __esm({
     HELIUS_API_KEY = process.env.HELIUS_API_KEY;
     HELIUS_RPC_ENDPOINT = process.env.HELIUS_RPC_ENDPOINT ? `${process.env.HELIUS_RPC_ENDPOINT}${HELIUS_API_KEY}` : `https://rpc.helius.xyz/?api-key=${HELIUS_API_KEY}`;
     FALLBACK_RPC = process.env.SOLANA_RPC_ENDPOINT || "https://api.devnet.solana.com";
-    ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY || "development_encryption_key_32_chars";
+    ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY;
+    if (!ENCRYPTION_KEY || ENCRYPTION_KEY === "development_encryption_key_32_chars") {
+      throw new Error("WALLET_ENCRYPTION_KEY must be set to a secure 32-byte hex string");
+    }
     getRpcEndpoint = () => {
+      console.log("HELIUS_API_KEY value:", HELIUS_API_KEY);
       if (HELIUS_API_KEY && HELIUS_API_KEY !== "dev_key_placeholder") {
         console.log("Using Helius RPC:", HELIUS_RPC_ENDPOINT);
         return HELIUS_RPC_ENDPOINT;
@@ -2261,6 +2289,8 @@ var CampaignService = class {
     const campaign = {
       id: campaignRef.id,
       ...enhancedData,
+      // Ensure consistent field names for images
+      logoUrl: enhancedData.tokenLogoUrl || enhancedData.logoUrl,
       currentAmount: 0,
       status: "active",
       walletAddress: walletInfo.publicKey,
@@ -2274,21 +2304,27 @@ var CampaignService = class {
   async getCampaign(id) {
     const doc = await db.collection(collections.campaigns).doc(id).get();
     if (!doc.exists) return null;
-    return doc.data();
+    return { id: doc.id, ...doc.data() };
   }
   async listCampaigns(filters) {
-    let query = db.collection(collections.campaigns).orderBy("createdAt", "desc");
+    let query = db.collection(collections.campaigns);
     if (filters?.status) {
       query = query.where("status", "==", filters.status);
-    }
-    if (filters?.tokenAddress) {
+    } else if (filters?.tokenAddress) {
       query = query.where("tokenAddress", "==", filters.tokenAddress);
-    }
-    if (filters?.campaignType) {
+    } else if (filters?.campaignType) {
       query = query.where("campaignType", "==", filters.campaignType);
     }
+    if (!filters?.status && !filters?.tokenAddress && !filters?.campaignType) {
+      query = query.orderBy("createdAt", "desc");
+    }
     const snapshot = await query.limit(50).get();
-    return snapshot.docs.map((doc) => doc.data());
+    const campaigns = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    return campaigns.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return dateB - dateA;
+    });
   }
   async updateCampaignAmount(campaignId, newAmount) {
     const campaignRef = db.collection(collections.campaigns).doc(campaignId);
@@ -2317,8 +2353,13 @@ var CampaignService = class {
     return contribution;
   }
   async getContributions(campaignId) {
-    const snapshot = await db.collection(collections.contributions).where("campaignId", "==", campaignId).orderBy("timestamp", "desc").get();
-    return snapshot.docs.map((doc) => doc.data());
+    const snapshot = await db.collection(collections.contributions).where("campaignId", "==", campaignId).get();
+    const contributions = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    return contributions.sort((a, b) => {
+      const timestampA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timestampB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return timestampB - timestampA;
+    });
   }
   async setupCampaignMonitoring(campaignId, walletAddress) {
     try {
@@ -2388,17 +2429,27 @@ var CampaignService = class {
     }
   }
   async checkDeadlines() {
-    const now = /* @__PURE__ */ new Date();
-    const expiredCampaigns = await db.collection(collections.campaigns).where("status", "==", "active").where("deadline", "<=", now).get();
-    for (const doc of expiredCampaigns.docs) {
-      const campaign = doc.data();
-      if (campaign.currentAmount < campaign.targetAmount) {
-        await doc.ref.update({
-          status: "failed",
-          updatedAt: now
-        });
-        this.processRefunds(campaign.id).catch(console.error);
+    try {
+      const now = /* @__PURE__ */ new Date();
+      const activeCampaigns = await db.collection(collections.campaigns).where("status", "==", "active").get();
+      const expiredCampaigns = activeCampaigns.docs.filter((doc) => {
+        const campaign = doc.data();
+        if (!campaign.deadline) return false;
+        const deadline = new Date(campaign.deadline);
+        return deadline <= now;
+      });
+      for (const doc of expiredCampaigns) {
+        const campaign = doc.data();
+        if (campaign.currentAmount < campaign.targetAmount) {
+          await doc.ref.update({
+            status: "failed",
+            updatedAt: now
+          });
+          this.processRefunds(campaign.id || doc.id).catch(console.error);
+        }
       }
+    } catch (error) {
+      console.error("Error checking campaign deadlines:", error);
     }
   }
   async processRefunds(campaignId) {
@@ -2423,6 +2474,7 @@ var CreateCampaignSchema = z.object({
   tokenName: z.string(),
   tokenSymbol: z.string(),
   tokenLogoUrl: z.string().optional(),
+  bannerUrl: z.string().optional(),
   campaignType: z.enum(["enhanced_token_info", "advertising", "boost"]),
   targetAmount: z.number().min(5),
   deadline: z.string().transform((str) => new Date(str)),
@@ -2479,7 +2531,8 @@ router.get("/campaigns/:id/contributions", async (req, res) => {
 });
 var ContributeSchema = z.object({
   contributorAddress: z.string(),
-  amount: z.number().min(5),
+  amount: z.number().min(0.01),
+  // Minimum 0.01 SOL
   transactionHash: z.string()
 });
 router.post("/campaigns/:id/contribute", async (req, res) => {
@@ -2977,33 +3030,289 @@ router4.get("/webhook/health", async (req, res) => {
 });
 var webhook_default = router4;
 
+// server/routes/helius.ts
+import axios4 from "axios";
+console.log("[Server Helius API] Module loaded");
+async function validateToken(req, res) {
+  try {
+    console.log("[Server Helius API] ========== START TOKEN VALIDATION ==========");
+    console.log("[Server Helius API] Route called with body:", JSON.stringify(req.body, null, 2));
+    console.log("[Server Helius API] Request headers:", JSON.stringify(req.headers, null, 2));
+    const { contractAddress } = req.body;
+    if (!contractAddress) {
+      console.log("[Server Helius API] ERROR: No contract address provided");
+      return res.status(400).json({
+        isValid: false,
+        error: "Contract address is required",
+        contractAddress: ""
+      });
+    }
+    if (!contractAddress || contractAddress.length < 32 || contractAddress.length > 44) {
+      console.log("[Server Helius API] ERROR: Invalid address format");
+      console.log("[Server Helius API] Address length:", contractAddress.length);
+      console.log("[Server Helius API] Address:", contractAddress);
+      return res.status(400).json({
+        isValid: false,
+        error: "Invalid Solana address format",
+        contractAddress
+      });
+    }
+    const HELIUS_API_KEY4 = process.env.HELIUS_API_KEY;
+    console.log("[Server Helius API] Environment check:");
+    console.log("[Server Helius API] - HELIUS_API_KEY available:", !!HELIUS_API_KEY4);
+    console.log("[Server Helius API] - HELIUS_API_KEY value:", HELIUS_API_KEY4 ? `${HELIUS_API_KEY4.substring(0, 8)}...` : "NOT SET");
+    console.log(`[Server Helius API] Validating token: ${contractAddress}`);
+    if (!HELIUS_API_KEY4) {
+      console.log("[Server Helius API] ERROR: No Helius API key configured");
+      return res.status(500).json({
+        isValid: false,
+        error: "Helius API key not configured",
+        contractAddress
+      });
+    }
+    try {
+      const apiUrl = `https://api.helius.xyz/v0/token-metadata?api-key=${HELIUS_API_KEY4}`;
+      const requestPayload = {
+        mintAccounts: [contractAddress]
+      };
+      console.log("[Server Helius API] Making token metadata request");
+      const response = await axios4.post(
+        apiUrl,
+        requestPayload,
+        {
+          headers: {
+            "Content-Type": "application/json"
+          },
+          timeout: 1e4
+        }
+      );
+      console.log("[Server Helius API] Token metadata response received");
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        const tokenData = response.data[0];
+        const onChainMetadata = tokenData.onChainMetadata;
+        const offChainMetadata = tokenData.offChainMetadata;
+        const account = tokenData.account;
+        if (!onChainMetadata && !offChainMetadata) {
+          console.log("[Server Helius API] ERROR: No metadata found for token");
+          return res.status(404).json({
+            isValid: false,
+            error: "Token metadata not found",
+            contractAddress
+          });
+        }
+        const metadata = {
+          name: offChainMetadata?.name || onChainMetadata?.metadata?.data?.name || "Unknown Token",
+          symbol: offChainMetadata?.symbol || onChainMetadata?.metadata?.data?.symbol || "UNKNOWN",
+          description: offChainMetadata?.description || onChainMetadata?.metadata?.data?.uri || "",
+          image: offChainMetadata?.image || "",
+          supply: tokenData.onChainAccountInfo?.accountInfo?.data?.parsed?.info?.supply ? parseInt(tokenData.onChainAccountInfo.accountInfo.data.parsed.info.supply) : void 0,
+          decimals: tokenData.onChainAccountInfo?.accountInfo?.data?.parsed?.info?.decimals || 9,
+          verified: onChainMetadata?.metadata?.primarySaleHappened || false,
+          mintAuthority: tokenData.onChainAccountInfo?.accountInfo?.data?.parsed?.info?.mintAuthority || null,
+          freezeAuthority: tokenData.onChainAccountInfo?.accountInfo?.data?.parsed?.info?.freezeAuthority || null,
+          updateAuthority: onChainMetadata?.metadata?.updateAuthority
+        };
+        if (offChainMetadata?.attributes) {
+          const socialLinks = {};
+          offChainMetadata.attributes.forEach((attr) => {
+            if (attr.trait_type === "website") socialLinks.website = attr.value;
+            if (attr.trait_type === "twitter") socialLinks.twitter = attr.value;
+            if (attr.trait_type === "telegram") socialLinks.telegram = attr.value;
+            if (attr.trait_type === "discord") socialLinks.discord = attr.value;
+          });
+          if (Object.keys(socialLinks).length > 0) {
+            metadata.socialLinks = socialLinks;
+            metadata.extensions = socialLinks;
+          }
+        }
+        console.log(`[Server Helius API] Token validated successfully: ${metadata.name} (${metadata.symbol})`);
+        return res.json({
+          isValid: true,
+          metadata,
+          exists: true,
+          contractAddress
+        });
+      }
+      console.log("[Server Helius API] No token data in response array");
+      return res.status(404).json({
+        isValid: false,
+        error: "Token not found in Helius database",
+        contractAddress
+      });
+    } catch (apiError) {
+      console.error("[Server Helius API] CATCH BLOCK - API Error occurred");
+      console.error("[Server Helius API] Error type:", apiError.constructor.name);
+      console.error("[Server Helius API] Error message:", apiError.message);
+      console.error("[Server Helius API] Error code:", apiError.code);
+      if (apiError.response) {
+        console.error("[Server Helius API] Response error details:");
+        console.error("[Server Helius API] - Status:", apiError.response.status);
+        console.error("[Server Helius API] - Status text:", apiError.response.statusText);
+        console.error("[Server Helius API] - Headers:", JSON.stringify(apiError.response.headers, null, 2));
+        console.error("[Server Helius API] - Data:", JSON.stringify(apiError.response.data, null, 2));
+      } else if (apiError.request) {
+        console.error("[Server Helius API] Request made but no response received");
+        console.error("[Server Helius API] Request details:", apiError.request);
+      }
+      const errorMessage = apiError?.response?.data?.error?.message || apiError.message || "Failed to fetch token data";
+      const errorCode = apiError?.response?.data?.error?.code;
+      console.log("[Server Helius API] ========== END TOKEN VALIDATION FAILURE ==========");
+      return res.status(500).json({
+        isValid: false,
+        error: errorMessage,
+        contractAddress,
+        details: {
+          errorCode,
+          errorMessage,
+          apiKeyPresent: !!HELIUS_API_KEY4,
+          suggestion: errorCode === -32401 ? "The Helius API key may be invalid or expired. Please check your Helius dashboard and ensure the key has access to the token metadata endpoint." : void 0
+        }
+      });
+    }
+  } catch (error) {
+    console.error("[Server Helius API] OUTER CATCH - General validation error:", error);
+    console.error("[Server Helius API] Error stack:", error.stack);
+    console.log("[Server Helius API] ========== END TOKEN VALIDATION OUTER ERROR ==========");
+    return res.status(500).json({
+      isValid: false,
+      error: "General server error during token validation",
+      contractAddress: req.body.contractAddress || "",
+      details: {
+        errorMessage: error.message,
+        errorType: error.constructor.name
+      }
+    });
+  }
+}
+
 // server/routes.ts
 init_websocket();
 
+// server/services/balanceMonitor.ts
+import { Connection as Connection5, PublicKey as PublicKey6, LAMPORTS_PER_SOL as LAMPORTS_PER_SOL2 } from "@solana/web3.js";
+var BalanceMonitorService = class {
+  connection;
+  constructor() {
+    const rpcEndpoint = process.env.HELIUS_RPC_ENDPOINT || "https://api.mainnet-beta.solana.com";
+    this.connection = new Connection5(rpcEndpoint, "confirmed");
+    console.log("[Balance Monitor] Initialized with RPC:", rpcEndpoint);
+  }
+  /**
+   * Update balances for all active campaigns
+   */
+  async updateAllCampaignBalances() {
+    try {
+      console.log("[Balance Monitor] Starting balance update for all active campaigns...");
+      const activeCampaigns = await campaignService.listCampaigns({ status: "active" });
+      if (activeCampaigns.length === 0) {
+        console.log("[Balance Monitor] No active campaigns found");
+        return;
+      }
+      console.log(`[Balance Monitor] Found ${activeCampaigns.length} active campaigns to check`);
+      const updatePromises = activeCampaigns.map(async (campaign) => {
+        try {
+          await this.updateCampaignBalance(campaign.id, campaign.walletAddress);
+        } catch (error) {
+          console.error(`[Balance Monitor] Failed to update balance for campaign ${campaign.id}:`, error);
+        }
+      });
+      await Promise.all(updatePromises);
+      console.log("[Balance Monitor] Balance update completed for all campaigns");
+    } catch (error) {
+      console.error("[Balance Monitor] Error updating campaign balances:", error);
+    }
+  }
+  /**
+   * Update balance for a specific campaign
+   */
+  async updateCampaignBalance(campaignId, walletAddress) {
+    try {
+      const publicKey = new PublicKey6(walletAddress);
+      const balanceLamports = await this.connection.getBalance(publicKey);
+      const balanceSOL = balanceLamports / LAMPORTS_PER_SOL2;
+      const solPriceUSD = await this.getSOLPriceUSD();
+      const balanceUSD = balanceSOL * solPriceUSD;
+      console.log(`[Balance Monitor] Campaign ${campaignId}: ${balanceSOL.toFixed(4)} SOL (~$${balanceUSD.toFixed(2)})`);
+      await campaignService.updateCampaignAmount(campaignId, balanceUSD);
+    } catch (error) {
+      console.error(`[Balance Monitor] Error updating balance for ${campaignId}:`, error);
+      throw error;
+    }
+  }
+  /**
+   * Get SOL price in USD using CoinGecko API
+   */
+  async getSOLPriceUSD() {
+    try {
+      const response = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd");
+      const data = await response.json();
+      if (data.solana && data.solana.usd) {
+        const price = data.solana.usd;
+        console.log(`[Balance Monitor] Current SOL price: $${price}`);
+        return price;
+      }
+      throw new Error("Invalid price data received");
+    } catch (error) {
+      console.warn("[Balance Monitor] Failed to fetch SOL price from CoinGecko, using fallback:", error.message);
+      return 180;
+    }
+  }
+  /**
+   * Get balance for a specific wallet (utility method)
+   */
+  async getWalletBalance(walletAddress) {
+    const publicKey = new PublicKey6(walletAddress);
+    const balanceLamports = await this.connection.getBalance(publicKey);
+    const balanceSOL = balanceLamports / LAMPORTS_PER_SOL2;
+    const solPrice = await this.getSOLPriceUSD();
+    const balanceUSD = balanceSOL * solPrice;
+    return {
+      sol: balanceSOL,
+      usd: balanceUSD
+    };
+  }
+};
+var balanceMonitorService = new BalanceMonitorService();
+
 // server/services/scheduler.ts
 var SchedulerService = class {
-  intervalId = null;
+  deadlineCheckInterval = null;
+  balanceMonitorInterval = null;
   start() {
-    this.intervalId = setInterval(async () => {
+    this.deadlineCheckInterval = setInterval(async () => {
       try {
         await this.checkCampaignDeadlines();
       } catch (error) {
         console.error("Scheduled deadline check failed:", error);
       }
     }, 5 * 60 * 1e3);
-    console.log("Scheduler service started");
+    this.balanceMonitorInterval = setInterval(async () => {
+      try {
+        await this.updateCampaignBalances();
+      } catch (error) {
+        console.error("Scheduled balance update failed:", error);
+      }
+    }, 30 * 1e3);
+    console.log("Scheduler service started (deadlines: 5min, balances: 30sec)");
   }
   stop() {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-      console.log("Scheduler service stopped");
+    if (this.deadlineCheckInterval) {
+      clearInterval(this.deadlineCheckInterval);
+      this.deadlineCheckInterval = null;
     }
+    if (this.balanceMonitorInterval) {
+      clearInterval(this.balanceMonitorInterval);
+      this.balanceMonitorInterval = null;
+    }
+    console.log("Scheduler service stopped");
   }
   async checkCampaignDeadlines() {
     console.log("Checking campaign deadlines...");
     await campaignService.checkDeadlines();
     console.log("Campaign deadline check completed");
+  }
+  async updateCampaignBalances() {
+    await balanceMonitorService.updateAllCampaignBalances();
   }
 };
 var schedulerService = new SchedulerService();
@@ -3029,6 +3338,7 @@ async function registerRoutes(app3) {
       res.status(500).json({ message: "Failed to fetch featured projects" });
     }
   });
+  app3.post("/api/helius/validate-token", validateToken);
   app3.use("/api", campaigns_default);
   app3.use("/api", balances_default);
   app3.use("/api/admin", admin_default);
@@ -3081,7 +3391,8 @@ var vite_config_default = defineConfig({
   },
   define: {
     global: "globalThis",
-    "process.env": "import.meta.env"
+    "process.env": "import.meta.env",
+    "import.meta.env.VITE_HELIUS_API_KEY": JSON.stringify(process.env.HELIUS_API_KEY)
   },
   root: path.resolve(import.meta.dirname, "client"),
   build: {
@@ -3161,7 +3472,55 @@ function serveStatic(app3) {
 }
 
 // server/index.ts
+import dotenv2 from "dotenv";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import cors from "cors";
+dotenv2.config();
+console.log("[Server Startup] Environment variables loaded:");
+console.log("[Server Startup] - NODE_ENV:", process.env.NODE_ENV);
+console.log("[Server Startup] - HELIUS_API_KEY:", process.env.HELIUS_API_KEY ? `${process.env.HELIUS_API_KEY.substring(0, 8)}...` : "NOT SET");
+console.log("[Server Startup] - VITE_HELIUS_API_KEY:", process.env.VITE_HELIUS_API_KEY ? `${process.env.VITE_HELIUS_API_KEY.substring(0, 8)}...` : "NOT SET");
+console.log("[Server Startup] - HELIUS_RPC_ENDPOINT:", process.env.HELIUS_RPC_ENDPOINT || "NOT SET");
 var app2 = express2();
+app2.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", "https://firestore.googleapis.com", "https://firebase.googleapis.com", "https://firebasestorage.googleapis.com", "https://api.devnet.solana.com", "https://api.mainnet-beta.solana.com", "https://mainnet.helius-rpc.com", "https://*.helius-rpc.com", "https://api.coingecko.com", "wss:", "ws:"]
+    }
+  },
+  hsts: {
+    maxAge: 31536e3,
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+app2.use(cors({
+  origin: process.env.NODE_ENV === "production" ? process.env.ALLOWED_ORIGINS?.split(",") || [] : ["http://localhost:3000", "http://localhost:5173"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+var generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1e3,
+  // 15 minutes
+  max: 100,
+  // requests per window
+  message: "Too many requests from this IP"
+});
+var adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1e3,
+  max: 20,
+  // Very restrictive for admin
+  message: "Too many admin requests from this IP"
+});
+app2.use("/api", generalLimiter);
+app2.use("/api/admin", adminLimiter);
 app2.use(express2.json());
 app2.use(express2.urlencoded({ extended: false }));
 app2.use((req, res, next) => {
@@ -3201,12 +3560,8 @@ app2.use((req, res, next) => {
   } else {
     serveStatic(app2);
   }
-  const port = 5e3;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true
-  }, () => {
+  const port = process.env.PORT || 3e3;
+  server.listen(port, () => {
     log(`serving on port ${port}`);
   });
 })();

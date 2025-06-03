@@ -8,6 +8,7 @@ export interface Campaign {
   tokenName: string;
   tokenSymbol: string;
   tokenLogoUrl?: string;
+  bannerUrl?: string;
   campaignType: CampaignType;
   targetAmount: number;
   currentAmount: number;

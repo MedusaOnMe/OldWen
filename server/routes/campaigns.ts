@@ -9,6 +9,7 @@ const CreateCampaignSchema = z.object({
   tokenName: z.string(),
   tokenSymbol: z.string(),
   tokenLogoUrl: z.string().optional(),
+  bannerUrl: z.string().optional(),
   campaignType: z.enum(['enhanced_token_info', 'advertising', 'boost']),
   targetAmount: z.number().min(5),
   deadline: z.string().transform(str => new Date(str)),
@@ -70,7 +71,7 @@ router.get('/campaigns/:id/contributions', async (req, res) => {
 
 const ContributeSchema = z.object({
   contributorAddress: z.string(),
-  amount: z.number().min(5),
+  amount: z.number().min(0.01), // Minimum 0.01 SOL
   transactionHash: z.string()
 });
 

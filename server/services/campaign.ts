@@ -13,6 +13,7 @@ export class CampaignService {
     tokenName: string;
     tokenSymbol: string;
     tokenLogoUrl?: string;
+    bannerUrl?: string;
     campaignType: CampaignType;
     targetAmount: number;
     deadline: Date;
@@ -42,6 +43,8 @@ export class CampaignService {
     const campaign: Campaign = {
       id: campaignRef.id,
       ...enhancedData,
+      // Ensure consistent field names for images
+      logoUrl: enhancedData.tokenLogoUrl || enhancedData.logoUrl,
       currentAmount: 0,
       status: 'active',
       walletAddress: walletInfo.publicKey,
@@ -60,7 +63,7 @@ export class CampaignService {
   async getCampaign(id: string): Promise<Campaign | null> {
     const doc = await db.collection(collections.campaigns).doc(id).get();
     if (!doc.exists) return null;
-    return doc.data() as Campaign;
+    return { id: doc.id, ...doc.data() } as Campaign;
   }
   
   async listCampaigns(filters?: {
@@ -88,7 +91,7 @@ export class CampaignService {
     const snapshot = await query.limit(50).get();
     
     // Sort in memory if needed
-    const campaigns = snapshot.docs.map(doc => doc.data() as Campaign);
+    const campaigns = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Campaign));
     return campaigns.sort((a, b) => {
       const dateA = new Date(a.createdAt).getTime();
       const dateB = new Date(b.createdAt).getTime();
@@ -142,10 +145,16 @@ export class CampaignService {
   async getContributions(campaignId: string): Promise<Contribution[]> {
     const snapshot = await db.collection(collections.contributions)
       .where('campaignId', '==', campaignId)
-      .orderBy('timestamp', 'desc')
       .get();
     
-    return snapshot.docs.map(doc => doc.data() as Contribution);
+    const contributions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contribution));
+    
+    // Sort by timestamp in memory (descending)
+    return contributions.sort((a, b) => {
+      const timestampA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timestampB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return timestampB - timestampA;
+    });
   }
   
   private async setupCampaignMonitoring(campaignId: string, walletAddress: string) {
@@ -238,23 +247,34 @@ export class CampaignService {
   }
   
   async checkDeadlines(): Promise<void> {
-    const now = new Date();
-    const expiredCampaigns = await db.collection(collections.campaigns)
-      .where('status', '==', 'active')
-      .where('deadline', '<=', now)
-      .get();
-    
-    for (const doc of expiredCampaigns.docs) {
-      const campaign = doc.data() as Campaign;
-      if (campaign.currentAmount < campaign.targetAmount) {
-        await doc.ref.update({
-          status: 'failed',
-          updatedAt: now
-        });
-        
-        // Trigger refunds
-        this.processRefunds(campaign.id).catch(console.error);
+    try {
+      const now = new Date();
+      // Get all active campaigns and filter in memory to avoid composite index
+      const activeCampaigns = await db.collection(collections.campaigns)
+        .where('status', '==', 'active')
+        .get();
+      
+      const expiredCampaigns = activeCampaigns.docs.filter(doc => {
+        const campaign = doc.data() as Campaign;
+        if (!campaign.deadline) return false;
+        const deadline = new Date(campaign.deadline);
+        return deadline <= now;
+      });
+      
+      for (const doc of expiredCampaigns) {
+        const campaign = doc.data() as Campaign;
+        if (campaign.currentAmount < campaign.targetAmount) {
+          await doc.ref.update({
+            status: 'failed',
+            updatedAt: now
+          });
+          
+          // Trigger refunds
+          this.processRefunds(campaign.id || doc.id).catch(console.error);
+        }
       }
+    } catch (error) {
+      console.error('Error checking campaign deadlines:', error);
     }
   }
   

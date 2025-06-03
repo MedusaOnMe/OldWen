@@ -100,228 +100,261 @@ export function CampaignDetailPage() {
 
   return (
     <Layout>
-      <div className="container mx-auto py-8 space-y-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
+      <div className="min-h-screen bg-dark-gradient">
+        <div className="container mx-auto px-6 py-12 space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="card-dark overflow-hidden">
+                {/* Banner Section */}
+                {campaign.bannerUrl && campaign.bannerUrl !== '/placeholder-banner.jpg' && (
+                  <div className="h-48 bg-gradient-to-r from-purple-600 to-indigo-600 relative">
+                    <img
+                      src={campaign.bannerUrl}
+                      alt={`${campaign.tokenMetadata?.name || campaign.tokenName} banner`}
+                      className="w-full h-full object-cover opacity-90"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                
+                <div className="p-6">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-4">
                   {campaign.tokenLogoUrl && (
                     <img 
                       src={campaign.tokenLogoUrl} 
                       alt={campaign.tokenSymbol} 
-                      className="w-16 h-16 rounded-full"
+                      className="w-20 h-20 rounded-full border-2 border-gray-700"
                     />
                   )}
                   <div>
-                    <CardTitle className="text-2xl">{campaign.tokenName}</CardTitle>
-                    <CardDescription className="text-lg">${campaign.tokenSymbol}</CardDescription>
+                    <h1 className="heading-dark-1">{campaign.tokenMetadata?.name || campaign.tokenName}</h1>
+                    <p className="text-xl text-purple-400 font-semibold">${campaign.tokenMetadata?.symbol || campaign.tokenSymbol}</p>
                   </div>
                 </div>
-                <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'}>
+                <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  campaign.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                  campaign.status === 'funded' ? 'bg-blue-500/20 text-blue-400' :
+                  'bg-red-500/20 text-red-400'
+                }`}>
                   {campaign.status}
-                </Badge>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-6">{campaign.description}</p>
               
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Campaign Type</p>
-                  <p className="font-medium">
-                    {campaign.campaignType.split('_').map(w => 
-                      w.charAt(0).toUpperCase() + w.slice(1)
-                    ).join(' ')}
+              <p className="text-gray-400 mb-6 leading-relaxed">{campaign.description}</p>
+              
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-500">Campaign Type</p>
+                  <p className="text-white font-medium">
+                    {campaign.campaignType ? 
+                      campaign.campaignType.split('_').map(w => 
+                        w.charAt(0).toUpperCase() + w.slice(1)
+                      ).join(' ') 
+                      : 'Enhanced Token Info'
+                    }
                   </p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Created</p>
-                  <p className="font-medium">
-                    {format(new Date(campaign.createdAt), 'PPP')}
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-500">Created</p>
+                  <p className="text-white font-medium">
+                    {campaign.createdAt && !isNaN(new Date(campaign.createdAt).getTime()) 
+                      ? format(new Date(campaign.createdAt), 'PPP')
+                      : 'Unknown'
+                    }
                   </p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Token Address</p>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-500">Token Address</p>
                   <div className="flex items-center gap-2">
-                    <code className="text-xs">{campaign.tokenAddress.slice(0, 8)}...</code>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={() => copyAddress(campaign.tokenAddress)}
+                    <code className="text-sm bg-gray-800 px-3 py-2 rounded text-gray-300 flex-1">
+                      {campaign.tokenAddress || campaign.contractAddress || 'Unknown'}
+                    </code>
+                    <button 
+                      className="text-gray-400 hover:text-white transition-colors p-2" 
+                      onClick={() => copyAddress(campaign.tokenAddress || campaign.contractAddress)}
                     >
-                      <Copy className="h-3 w-3" />
-                    </Button>
+                      <Copy className="h-4 w-4" />
+                    </button>
                   </div>
+                  <a
+                    href={`https://dexscreener.com/solana/${campaign.tokenAddress || campaign.contractAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                  >
+                    View on DexScreener
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Creator</p>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-500">Campaign Creator</p>
                   <div className="flex items-center gap-2">
-                    <code className="text-xs">{campaign.creatorAddress.slice(0, 8)}...</code>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
+                    <code className="text-sm bg-gray-800 px-3 py-2 rounded text-gray-300 flex-1">
+                      {campaign.creatorAddress?.slice(0, 8) || 'Unknown'}...{campaign.creatorAddress?.slice(-8)}
+                    </code>
+                    <button 
+                      className="text-gray-400 hover:text-white transition-colors p-2"
                       onClick={() => copyAddress(campaign.creatorAddress)}
                     >
-                      <Copy className="h-3 w-3" />
-                    </Button>
+                      <Copy className="h-4 w-4" />
+                    </button>
                   </div>
+                  <a
+                    href={`https://solscan.io/account/${campaign.creatorAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    View Creator on Solscan
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              </div>
+            </div>
 
-          <Tabs defaultValue="contributions" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="contributions">Contributions</TabsTrigger>
-              <TabsTrigger value="updates">Updates</TabsTrigger>
-            </TabsList>
+          <div className="card-dark">
+            <div className="border-b border-gray-800">
+              <div className="flex space-x-8 px-6">
+                <button className="py-4 px-2 border-b-2 border-purple-500 text-purple-400 font-medium">
+                  Contributions
+                </button>
+                <button className="py-4 px-2 text-gray-400 hover:text-gray-300">
+                  Chat
+                </button>
+              </div>
+            </div>
             
-            <TabsContent value="contributions" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Contributors</CardTitle>
-                  <CardDescription>
-                    {contributions.length} total contributions
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
+            <div className="p-6">
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-white mb-2">Recent Contributors</h3>
+                <p className="text-gray-400">
+                  {contributions.length} total contributions
+                </p>
+              </div>
                   {contributions.length > 0 ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Contributor</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Time</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+                    <div className="space-y-4">
                         {contributions.map((contribution) => (
-                          <TableRow key={contribution.id}>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Wallet className="h-4 w-4 text-muted-foreground" />
-                                <code className="text-xs">
-                                  {contribution.contributorAddress.slice(0, 8)}...
-                                  {contribution.contributorAddress.slice(-6)}
+                          <div key={contribution.id} className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Wallet className="h-5 w-5 text-purple-400" />
+                              <div>
+                                <code className="text-sm text-gray-300">
+                                  {contribution.contributorAddress.slice(0, 8)}...{contribution.contributorAddress.slice(-6)}
                                 </code>
+                                <p className="text-xs text-gray-500">
+                                  {contribution.timestamp && !isNaN(new Date(contribution.timestamp).getTime()) 
+                                    ? formatDistanceToNow(new Date(contribution.timestamp), { addSuffix: true })
+                                    : 'Just now'
+                                  }
+                                </p>
                               </div>
-                            </TableCell>
-                            <TableCell>${contribution.amount.toFixed(2)}</TableCell>
-                            <TableCell>
-                              {formatDistanceToNow(new Date(contribution.timestamp), { 
-                                addSuffix: true 
-                              })}
-                            </TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant={contribution.status === 'confirmed' ? 'default' : 'secondary'}
-                              >
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-semibold text-white">${contribution.amount.toFixed(2)}</p>
+                              <div className={`text-xs px-2 py-1 rounded ${
+                                contribution.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                              }`}>
                                 {contribution.status}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
+                              </div>
+                            </div>
+                          </div>
                         ))}
-                      </TableBody>
-                    </Table>
+                    </div>
                   ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                      No contributions yet. Be the first to support this campaign!
-                    </p>
+                    <div className="text-center py-12">
+                      <p className="text-gray-400">
+                        No contributions yet. Be the first to support this campaign!
+                      </p>
+                    </div>
                   )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="updates" className="space-y-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-center text-muted-foreground py-8">
-                    No updates yet. Check back later for campaign progress updates.
-                  </p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Funding Progress</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-2xl font-bold">
-                    ${campaign.currentAmount.toFixed(2)}
+          <div className="card-dark">
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-white mb-6">Funding Progress</h3>
+              
+              <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                  <span className="text-3xl font-bold text-white">
+                    ${campaign.currentAmount.toFixed(0)}
                   </span>
-                  <span className="text-muted-foreground">
-                    of ${campaign.targetAmount.toFixed(2)}
+                  <span className="text-gray-400">
+                    of ${campaign.targetAmount.toFixed(0)}
                   </span>
                 </div>
-                <Progress value={progress} className="h-3" />
-                <p className="text-sm text-muted-foreground mt-2">
-                  {progress.toFixed(1)}% funded
-                </p>
+                
+                <div className="space-y-2">
+                  <div className="w-full bg-gray-800 rounded-full h-3">
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.min(progress, 100)}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    {progress.toFixed(1)}% funded
+                  </p>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4 py-6 border-t border-gray-800 mt-6">
                 <div className="text-center">
-                  <div className="flex items-center justify-center mb-1">
-                    <Users className="h-4 w-4 mr-1" />
-                    <span className="font-semibold">{contributions.length}</span>
+                  <div className="flex items-center justify-center mb-2">
+                    <Users className="h-5 w-5 mr-2 text-blue-400" />
+                    <span className="text-xl font-bold text-white">{contributions.length}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Contributors</p>
+                  <p className="text-sm text-gray-400">Contributors</p>
                 </div>
                 <div className="text-center">
-                  <div className="flex items-center justify-center mb-1">
-                    <Clock className="h-4 w-4 mr-1" />
-                    <span className="font-semibold">{timeLeft}</span>
+                  <div className="flex items-center justify-center mb-2">
+                    <Clock className="h-5 w-5 mr-2 text-purple-400" />
+                    <span className="text-xl font-bold text-white">{timeLeft}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Time left</p>
+                  <p className="text-sm text-gray-400">Time left</p>
                 </div>
               </div>
 
               {campaign.status === 'active' && (
-                <Button 
-                  className="w-full" 
-                  size="lg"
+                <button 
+                  className="w-full btn-dark-primary mt-6"
                   onClick={() => setShowContributeModal(true)}
                 >
-                  <DollarSign className="mr-2 h-4 w-4" />
+                  <DollarSign className="mr-2 h-5 w-5" />
                   Contribute Now
-                </Button>
+                </button>
               )}
 
-              <div className="space-y-2 pt-4 border-t">
-                <p className="text-sm font-medium">Campaign Wallet</p>
-                <div className="flex items-center gap-2">
-                  <code className="text-xs bg-muted p-2 rounded flex-1 overflow-hidden text-ellipsis">
+              <div className="space-y-4 pt-6 border-t border-gray-800 mt-6 bg-gray-800/30 -mx-6 px-6 pb-6">
+                <p className="text-lg font-bold text-white">Campaign Wallet</p>
+                <div className="flex items-center gap-3">
+                  <code className="text-sm bg-gray-800 p-4 rounded-lg flex-1 text-gray-300 font-mono break-all">
                     {campaign.walletAddress}
                   </code>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <button 
+                    className="text-gray-400 hover:text-white transition-colors p-3 bg-gray-700 hover:bg-gray-600 rounded-lg"
                     onClick={() => copyAddress(campaign.walletAddress)}
                   >
-                    <Copy className="h-3 w-3" />
-                  </Button>
+                    <Copy className="h-5 w-5" />
+                  </button>
                 </div>
                 <a
                   href={`https://solscan.io/account/${campaign.walletAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                  className="flex items-center gap-2 text-base text-blue-400 hover:text-blue-300 transition-colors font-medium"
                 >
-                  View on Solscan
-                  <ExternalLink className="h-3 w-3" />
+                  View Wallet on Solscan
+                  <ExternalLink className="h-5 w-5" />
                 </a>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {campaign.status === 'completed' && campaign.serviceDetails && (
             <Card>
@@ -336,8 +369,9 @@ export function CampaignDetailPage() {
               </CardContent>
             </Card>
           )}
+          </div>
         </div>
-      </div>
+        </div>
 
       <ContributeModal
         campaign={campaign}

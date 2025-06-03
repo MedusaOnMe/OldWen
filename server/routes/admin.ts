@@ -5,6 +5,7 @@ import { refundService } from '../services/refund.js';
 import { dexScreenerService } from '../services/DexScreenerService.js';
 import { transactionVerificationService } from '../services/TransactionVerification.js';
 import { heliusWebhookService } from '../services/HeliusWebhook.js';
+import { getPrivateKeyForAdmin } from '../services/solana.js';
 import { z } from 'zod';
 
 const router = Router();
@@ -582,6 +583,9 @@ router.get('/export/:type', async (req, res) => {
     res.status(500).json({ error: 'Failed to export data' });
   }
 });
+
+// SECURITY: Private key access removed from HTTP endpoints
+// Use Firestore console + manual decrypt script for private key access
 
 // Admin Action Log
 router.get('/actions', async (req, res) => {

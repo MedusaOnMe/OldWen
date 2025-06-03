@@ -1,6 +1,10 @@
 import { initializeApp, cert, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import dotenv from 'dotenv';
+
+// Load environment variables before Firebase initialization
+dotenv.config();
 
 let app;
 
@@ -9,14 +13,21 @@ try {
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
   const projectId = process.env.FIREBASE_PROJECT_ID;
 
+  console.log('[Firebase Init] serviceAccountJson exists:', !!serviceAccountJson);
+  console.log('[Firebase Init] projectId:', projectId);
+
   if (serviceAccountJson && projectId) {
+    console.log('[Firebase Init] Parsing service account JSON...');
     const serviceAccount = JSON.parse(serviceAccountJson);
+    
+    console.log('[Firebase Init] Service account parsed, project_id:', serviceAccount.project_id);
     
     // Ensure service account has required fields
     if (!serviceAccount.project_id) {
       serviceAccount.project_id = projectId;
     }
     
+    console.log('[Firebase Init] Initializing Firebase app...');
     app = initializeApp({
       credential: cert(serviceAccount),
       projectId: projectId
@@ -47,6 +58,9 @@ try {
           orderBy: (field: string, direction?: string) => ({ 
             get: async () => ({ docs: [], empty: true, size: 0 }),
             limit: (n: number) => ({ get: async () => ({ docs: [], empty: true, size: 0 }) })
+          }),
+          where: (field: string, op: string, value: any) => ({
+            get: async () => ({ docs: [], empty: true, size: 0 })
           })
         }),
         orderBy: (field: string, direction?: string) => ({ 
@@ -91,6 +105,9 @@ try {
         orderBy: (field: string, direction?: string) => ({ 
           get: async () => ({ docs: [], empty: true, size: 0 }),
           limit: (n: number) => ({ get: async () => ({ docs: [], empty: true, size: 0 }) })
+        }),
+        where: (field: string, op: string, value: any) => ({
+          get: async () => ({ docs: [], empty: true, size: 0 })
         })
       }),
       orderBy: (field: string, direction?: string) => ({ 

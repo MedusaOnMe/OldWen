@@ -113,30 +113,30 @@ export const EnhancedCampaignCard: React.FC<EnhancedCampaignCardProps> = ({
     switch (size) {
       case 'small':
         return {
-          cardHeight: 'h-full min-h-[420px]',
-          bannerHeight: 'h-20',
-          logoSize: 'w-10 h-10',
+          cardHeight: 'h-full min-h-[320px]',
+          bannerHeight: 'h-24',
+          logoSize: 'w-12 h-12',
           titleSize: 'text-base',
           descriptionLines: 'line-clamp-2',
           padding: 'p-4'
         };
       case 'large':
         return {
-          cardHeight: 'h-full min-h-[540px]',
+          cardHeight: 'h-full min-h-[420px]',
           bannerHeight: 'h-32',
           logoSize: 'w-16 h-16',
           titleSize: 'text-xl',
-          descriptionLines: 'line-clamp-4',
+          descriptionLines: 'line-clamp-3',
           padding: 'p-6'
         };
       default: // medium
         return {
-          cardHeight: 'h-full min-h-[480px]',
-          bannerHeight: 'h-24',
-          logoSize: 'w-12 h-12',
+          cardHeight: 'h-full min-h-[380px]',
+          bannerHeight: 'h-28',
+          logoSize: 'w-14 h-14',
           titleSize: 'text-lg',
-          descriptionLines: 'line-clamp-3',
-          padding: 'p-5'
+          descriptionLines: 'line-clamp-2',
+          padding: 'p-4'
         };
     }
   }, [size]);
@@ -201,273 +201,152 @@ export const EnhancedCampaignCard: React.FC<EnhancedCampaignCardProps> = ({
   const TypeIcon = campaignTypeConfig.icon;
 
   return (
-    <Card 
+    <div 
       className={`
-        ${sizeConfig.cardHeight} card-dark flex flex-col
-        ${featured ? 'glow-purple' : ''}
+        ${sizeConfig.cardHeight} 
+        bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden
+        ${featured ? 'ring-2 ring-purple-500' : ''}
+        ${interactive ? 'cursor-pointer hover:scale-105 hover:shadow-2xl hover:border-purple-500/50' : ''}
+        transition-all duration-300 group shadow-xl
         ${className}
       `}
       onClick={handleCardClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Featured Badge */}
-      {featured && (
-        <div className="absolute top-4 left-4 z-20">
-          <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-semibold shadow-lg">
-            <Star className="w-3 h-3 mr-1" />
-            Featured
-          </Badge>
-        </div>
-      )}
-
-      {/* Campaign Status */}
+      {/* Status Badge */}
       <div className="absolute top-4 right-4 z-20">
-        <Badge variant={statusConfig.variant} className={`${statusConfig.className} shadow-lg`}>
+        <div className={`px-3 py-1 rounded-full text-xs font-bold ${
+          campaign.status === 'active' ? 'bg-green-500 text-white' :
+          campaign.status === 'funded' ? 'bg-blue-500 text-white' :
+          'bg-red-500 text-white'
+        }`}>
           {statusConfig.label}
-        </Badge>
+        </div>
       </div>
 
-      {/* Banner Image */}
-      <div className={`${sizeConfig.bannerHeight} relative overflow-hidden`}>
-        <img
-          src={campaign.bannerUrl}
-          alt={`${campaign.tokenMetadata.name} banner`}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-900/70 to-transparent" />
+      {/* Banner Section - Clean and Simple */}
+      <div className="h-32 bg-gradient-to-r from-purple-600 to-indigo-600 relative">
+        {campaign.bannerUrl && 
+         campaign.bannerUrl !== '/placeholder-banner.jpg' ? (
+          <img
+            src={campaign.bannerUrl}
+            alt={`${campaign.tokenMetadata.name} banner`}
+            className="w-full h-full object-cover opacity-90"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : null}
       </div>
 
-      <CardContent className={`${sizeConfig.padding} flex flex-col flex-1 space-y-4 relative`}>
-        {/* Token Header */}
-        <div className="flex items-center space-x-3 -mt-8 relative z-10">
-          <div className="relative">
-            <Avatar className={`${sizeConfig.logoSize} border-2 border-gray-800 shadow-lg`}>
-              <AvatarImage src={campaign.logoUrl} alt={campaign.tokenMetadata.name} />
-              <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold">
-                {campaign.tokenMetadata.symbol.slice(0, 2)}
-              </AvatarFallback>
-            </Avatar>
-            
-            {/* Campaign Type Indicator */}
-            <div className={`
-              absolute -bottom-1 -right-1 w-6 h-6 rounded-full 
-              bg-gradient-to-r ${campaignTypeConfig.color} 
-              flex items-center justify-center shadow-lg
-            `}>
-              <TypeIcon className="w-3 h-3 text-white" />
-            </div>
+      {/* Content Section */}
+      <div className="p-6 flex flex-col flex-1">
+        {/* Token Header with Large Logo */}
+        <div className="flex items-center space-x-4 mb-4 -mt-8 relative z-10">
+          <div className="w-24 h-24 rounded-full border-4 border-gray-900 shadow-2xl bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center overflow-hidden">
+            {campaign.logoUrl && 
+             campaign.logoUrl !== '/placeholder-token.png' ? (
+              <img 
+                src={campaign.logoUrl} 
+                alt={campaign.tokenMetadata.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            ) : (
+              <div className="text-white font-bold text-2xl">
+                {campaign.tokenMetadata.symbol?.slice(0, 2) || 'TK'}
+              </div>
+            )}
           </div>
 
           <div className="flex-1 min-w-0">
+            <h3 className="text-xl font-bold text-white mb-1 truncate">
+              {campaign.tokenMetadata?.name || campaign.tokenName || 'Unknown Token'}
+            </h3>
             <div className="flex items-center space-x-2">
-              <h3 className={`${sizeConfig.titleSize} font-bold text-white truncate`}>
-                {campaign.tokenMetadata.name}
-              </h3>
-              <Badge variant="secondary" className="bg-gray-800 text-gray-300 text-xs border-gray-700">
-                {campaign.tokenMetadata.symbol}
-              </Badge>
-              {campaign.tokenMetadata.verified && (
-                <CheckCircle className="w-4 h-4 text-blue-400 flex-shrink-0" />
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-2 mt-1">
-              <span className={`text-xs ${campaignTypeConfig.textColor} font-medium`}>
-                {campaignTypeConfig.label}
+              <span className="px-2 py-1 bg-purple-600 text-white text-sm font-medium rounded">
+                ${campaign.tokenMetadata.symbol}
               </span>
-              {campaign.trending && (
-                <Badge className="bg-red-500/20 text-red-400 text-xs">
-                  <TrendingUp className="w-3 h-3 mr-1" />
-                  Trending
-                </Badge>
+              {campaign.tokenMetadata.verified && (
+                <CheckCircle className="w-4 h-4 text-blue-400" />
               )}
             </div>
           </div>
-
-          {/* Action Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-gray-400 hover:text-gray-300 hover:bg-gray-800 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreVertical className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-gray-900 border border-gray-800 shadow-xl">
-              <DropdownMenuItem onClick={handleShare} className="text-gray-300 hover:bg-gray-800">
-                <Share2 className="w-4 h-4 mr-2" />
-                Share Campaign
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => setLocation(`/campaign/${campaign.id}`)}
-                className="text-gray-300 hover:bg-gray-800"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                View Details
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
 
         {/* Description */}
-        <p className={`text-gray-400 text-sm ${sizeConfig.descriptionLines}`}>
+        <p className="text-gray-400 text-sm mb-4 line-clamp-2">
           {campaign.description}
         </p>
 
-        {/* Progress Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-500">Progress</span>
-            <span className="text-white font-semibold">
-              ${campaign.currentAmount.toFixed(0)} / ${campaign.targetAmount.toFixed(0)}
+        {/* Funding Progress */}
+        <div className="space-y-3 mb-4">
+          <div className="flex justify-between items-center">
+            <span className="text-2xl font-bold text-white">
+              ${campaign.currentAmount.toFixed(0)}
+            </span>
+            <span className="text-gray-400">
+              of ${campaign.targetAmount.toFixed(0)}
             </span>
           </div>
 
-          <Progress 
-            value={metrics.progress} 
-            className={`h-2 ${
-              metrics.isNearlyFunded ? 'bg-green-500/20' : 
-              metrics.urgency === 'high' ? 'bg-red-500/20' : 
-              'bg-white/20'
-            }`}
-          />
+          <div className="w-full bg-gray-800 rounded-full h-2">
+            <div 
+              className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${Math.min(metrics.progress, 100)}%` }}
+            ></div>
+          </div>
 
-          {/* Campaign Stats */}
-          {showStats && (
-            <div className="grid grid-cols-3 gap-4 pt-2">
-              <div className="text-center">
-                <div className="flex items-center justify-center space-x-1">
-                  <Users className="w-3 h-3 text-blue-400" />
-                  <span className="text-xs text-blue-400 font-medium">
-                    {campaign.contributorCount}
-                  </span>
-                </div>
-                <span className="text-xs text-gray-500">Contributors</span>
-              </div>
-
-              <div className="text-center">
-                <div className="flex items-center justify-center space-x-1">
-                  <Target className="w-3 h-3 text-purple-400" />
-                  <span className="text-xs text-purple-400 font-medium">
-                    {metrics.progress.toFixed(0)}%
-                  </span>
-                </div>
-                <span className="text-xs text-gray-500">Funded</span>
-              </div>
-
-              <div className="text-center">
-                <div className="flex items-center justify-center space-x-1">
-                  <Clock className={`w-3 h-3 ${
-                    metrics.urgency === 'high' ? 'text-red-400' : 
-                    metrics.urgency === 'medium' ? 'text-yellow-400' : 
-                    'text-green-400'
-                  }`} />
-                  <span className={`text-xs font-medium ${
-                    metrics.urgency === 'high' ? 'text-red-400' : 
-                    metrics.urgency === 'medium' ? 'text-yellow-400' : 
-                    'text-green-400'
-                  }`}>
-                    {metrics.timeRemaining.split(' ')[0]}
-                  </span>
-                </div>
-                <span className="text-xs text-gray-500">
-                  {metrics.timeRemaining.includes('day') ? 'Days' : 
-                   metrics.timeRemaining.includes('hour') ? 'Hours' : 'Time'} Left
-                </span>
-              </div>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-sm font-bold text-white">{campaign.contributorCount || 0}</div>
+              <div className="text-xs text-gray-500">Contributors</div>
             </div>
-          )}
+            <div>
+              <div className="text-sm font-bold text-purple-400">{metrics.progress.toFixed(0)}%</div>
+              <div className="text-xs text-gray-500">Funded</div>
+            </div>
+            <div>
+              <div className={`text-sm font-bold ${
+                metrics.urgency === 'high' ? 'text-red-400' : 
+                metrics.urgency === 'medium' ? 'text-yellow-400' : 
+                'text-green-400'
+              }`}>
+                {metrics.timeRemaining.split(' ')[0]}
+              </div>
+              <div className="text-xs text-gray-500">Days Left</div>
+            </div>
+          </div>
         </div>
 
-        {/* Spacer to push buttons to bottom */}
+        {/* Spacer to push button to bottom */}
         <div className="flex-1" />
         
-        {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-2 mt-auto">
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLike}
-              className={`text-gray-400 hover:text-gray-300 hover:bg-gray-800 transition-colors ${
-                isLiked ? 'text-red-400' : ''
-              }`}
-            >
-              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-            </Button>
+        {/* Single Action Button */}
+        <button
+          className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 ${
+            metrics.isFunded 
+              ? 'bg-green-600 hover:bg-green-700 text-white' 
+              : metrics.isExpired 
+                ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white hover:scale-105'
+          }`}
+          disabled={metrics.isExpired}
+          onClick={(e) => {
+            e.stopPropagation();
+            setLocation(`/campaign/${campaign.id}`);
+          }}
+        >
+          {metrics.isFunded ? 'View Campaign' : 
+           metrics.isExpired ? 'Expired' : 
+           'Contribute Now'}
+        </button>
+      </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleShare}
-              className="text-gray-400 hover:text-gray-300 hover:bg-gray-800"
-            >
-              <Share2 className="w-4 h-4" />
-            </Button>
-          </div>
-
-          <Button
-            size="sm"
-            className={`
-              font-medium transition-all duration-200 rounded-lg
-              ${metrics.isFunded 
-                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                : metrics.isExpired 
-                  ? 'bg-gray-700 hover:bg-gray-600 text-gray-400 cursor-not-allowed'
-                  : 'btn-dark-primary'
-              }
-            `}
-            disabled={metrics.isExpired}
-            onClick={(e) => {
-              e.stopPropagation();
-              setLocation(`/campaign/${campaign.id}`);
-            }}
-          >
-            {metrics.isFunded ? 'View Campaign' : 
-             metrics.isExpired ? 'Expired' : 
-             'Contribute'}
-          </Button>
-        </div>
-
-        {/* Urgency Indicator */}
-        {metrics.urgency === 'high' && !metrics.isFunded && !metrics.isExpired && (
-          <div className="flex items-center space-x-2 p-2 bg-red-500/20 rounded-lg border border-red-500/30">
-            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
-            <span className="text-red-400 text-xs font-medium">
-              {metrics.timeRemaining.includes('day') && parseInt(metrics.timeRemaining) <= 1 
-                ? 'Less than 24 hours remaining!' 
-                : 'Ending soon!'}
-            </span>
-          </div>
-        )}
-
-        {/* Social Links Preview */}
-        {Object.values(campaign.socialLinks).some(link => link) && (
-          <div className="flex items-center space-x-1 opacity-70">
-            {campaign.socialLinks.website && (
-              <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-            )}
-            {campaign.socialLinks.twitter && (
-              <div className="w-1.5 h-1.5 bg-sky-400 rounded-full" />
-            )}
-            {campaign.socialLinks.telegram && (
-              <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
-            )}
-            <span className="text-xs text-gray-400 ml-1">Connected</span>
-          </div>
-        )}
-      </CardContent>
-
-      {/* Hover Overlay Effect */}
-      <div className={`
-        absolute inset-0 bg-gradient-to-br from-purple-500/10 to-indigo-500/10 
-        opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none
-      `} />
-    </Card>
+    </div>
   );
 };
 

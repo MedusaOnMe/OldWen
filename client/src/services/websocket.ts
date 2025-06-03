@@ -13,7 +13,12 @@ class WebSocketService {
   connect() {
     if (this.ws?.readyState === WebSocket.OPEN) return;
 
-    this.ws = new WebSocket(this.url);
+    try {
+      this.ws = new WebSocket(this.url);
+    } catch (error) {
+      console.error('WebSocket connection failed:', error);
+      return;
+    }
 
     this.ws.onopen = () => {
       console.log('WebSocket connected');

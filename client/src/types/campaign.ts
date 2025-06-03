@@ -8,6 +8,7 @@ export interface Campaign {
   tokenName: string;
   tokenSymbol: string;
   tokenLogoUrl?: string;
+  bannerUrl?: string;
   campaignType: CampaignType;
   targetAmount: number;
   currentAmount: number;
@@ -39,6 +40,7 @@ export interface CreateCampaignData {
   tokenName: string;
   tokenSymbol: string;
   tokenLogoUrl?: string;
+  bannerUrl?: string;
   campaignType: CampaignType;
   targetAmount: number;
   deadline: string;

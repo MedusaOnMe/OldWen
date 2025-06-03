@@ -197,19 +197,28 @@ class DatabaseService {
   async createCampaign(campaignData: Omit<Campaign, 'id'>): Promise<string> {
     try {
       // Use transaction to ensure consistency
+      // Check for duplicate contract address BEFORE transaction
+      const existingQuery = query(
+        collection(db, COLLECTIONS.CAMPAIGNS),
+        where('contractAddress', '==', campaignData.contractAddress)
+      );
+      
+      const existingDocs = await getDocs(existingQuery);
+      if (!existingDocs.empty) {
+        throw new Error('Campaign already exists for this contract address');
+      }
+
       const result = await runTransaction(db, async (transaction: Transaction) => {
-        // Check for duplicate contract address
-        const existingQuery = query(
-          collection(db, COLLECTIONS.CAMPAIGNS),
-          where('contractAddress', '==', campaignData.contractAddress)
-        );
+        // ALL READS FIRST - Get user doc to see if it exists
+        let userDoc = null;
+        let userRef = null;
         
-        const existingDocs = await transaction.get(existingQuery);
-        if (!existingDocs.empty) {
-          throw new Error('Campaign already exists for this contract address');
+        if (campaignData.createdBy) {
+          userRef = doc(db, COLLECTIONS.USERS, campaignData.createdBy);
+          userDoc = await transaction.get(userRef);
         }
 
-        // Create campaign document
+        // ALL WRITES SECOND - Create campaign document
         const campaignRef = doc(collection(db, COLLECTIONS.CAMPAIGNS));
         const campaignWithTimestamps = {
           ...campaignData,
@@ -219,13 +228,28 @@ class DatabaseService {
 
         transaction.set(campaignRef, campaignWithTimestamps);
 
-        // Update user statistics
-        if (campaignData.createdBy) {
-          const userRef = doc(db, COLLECTIONS.USERS, campaignData.createdBy);
-          transaction.update(userRef, {
-            campaignsCreated: increment(1),
-            updatedAt: serverTimestamp()
-          });
+        // Update user statistics (create user if doesn't exist)
+        if (campaignData.createdBy && userRef) {
+          if (userDoc && userDoc.exists()) {
+            // Update existing user
+            transaction.update(userRef, {
+              campaignsCreated: increment(1),
+              updatedAt: serverTimestamp()
+            });
+          } else {
+            // Create new user document
+            transaction.set(userRef, {
+              id: campaignData.createdBy,
+              campaignsCreated: 1,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+              profile: {
+                displayName: null,
+                avatar: null,
+                bio: null
+              }
+            });
+          }
         }
 
         return campaignRef.id;

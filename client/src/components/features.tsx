@@ -86,15 +86,15 @@ const colorClasses = {
 
 export default function Features() {
   return (
-    <section className="section-minimal bg-white">
-      <div className="container-minimal">
+    <section className="py-24 bg-dark-gradient">
+      <div className="container mx-auto px-6">
         {/* Section Header */}
-        <div className="text-center space-y-4 mb-16">
-          <h2 className="heading-2">
+        <div className="text-center space-y-6 mb-20">
+          <h2 className="heading-dark-1">
             Everything You Need to
-            <span className="block">Boost Your Token</span>
+            <span className="block bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Boost Your Token</span>
           </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
             Leverage the power of community crowdfunding to unlock premium DexScreener features for your token
           </p>
         </div>
@@ -107,16 +107,16 @@ export default function Features() {
             return (
               <div
                 key={index}
-                className="feature-minimal"
+                className="card-dark hover:scale-105 transition-all duration-300 group"
               >
-                <div className="space-y-4">
+                <div className="p-8 space-y-6">
                   {/* Icon */}
-                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <Icon className="w-6 h-6 text-gray-700" />
+                  <div className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${feature.gradient} flex items-center justify-center shadow-lg`}>
+                    <Icon className="w-8 h-8 text-white" />
                   </div>
                   
-                  <h3 className="text-xl font-semibold text-gray-900">{feature.title}</h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <h3 className="text-2xl font-bold text-white group-hover:text-purple-300 transition-colors">{feature.title}</h3>
+                  <p className="text-gray-400 leading-relaxed text-lg">
                     {feature.description}
                   </p>
                 </div>
@@ -125,7 +125,6 @@ export default function Features() {
           })}
         </div>
       </div>
-
     </section>
   );
 }

@@ -31,9 +31,9 @@ export function CampaignsPage() {
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       return (
-        campaign.tokenName.toLowerCase().includes(search) ||
-        campaign.tokenSymbol.toLowerCase().includes(search) ||
-        campaign.tokenAddress.toLowerCase().includes(search)
+        (campaign.tokenMetadata?.name || campaign.tokenName || '').toLowerCase().includes(search) ||
+        (campaign.tokenMetadata?.symbol || campaign.tokenSymbol || '').toLowerCase().includes(search) ||
+        (campaign.contractAddress || campaign.tokenAddress || '').toLowerCase().includes(search)
       );
     }
     return true;
@@ -123,7 +123,7 @@ export function CampaignsPage() {
 
           <TabsContent value="active" className="mt-6">
             {activeCampaigns.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
                 {activeCampaigns.map(campaign => (
                   <CampaignCard key={campaign.id} campaign={campaign} />
                 ))}
@@ -137,7 +137,7 @@ export function CampaignsPage() {
 
           <TabsContent value="funded" className="mt-6">
             {fundedCampaigns.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
                 {fundedCampaigns.map(campaign => (
                   <CampaignCard key={campaign.id} campaign={campaign} />
                 ))}
@@ -151,7 +151,7 @@ export function CampaignsPage() {
 
           <TabsContent value="failed" className="mt-6">
             {failedCampaigns.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
                 {failedCampaigns.map(campaign => (
                   <CampaignCard key={campaign.id} campaign={campaign} />
                 ))}

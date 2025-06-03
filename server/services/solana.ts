@@ -10,10 +10,15 @@ const HELIUS_RPC_ENDPOINT = process.env.HELIUS_RPC_ENDPOINT
   ? `${process.env.HELIUS_RPC_ENDPOINT}${HELIUS_API_KEY}`
   : `https://rpc.helius.xyz/?api-key=${HELIUS_API_KEY}`;
 const FALLBACK_RPC = process.env.SOLANA_RPC_ENDPOINT || 'https://api.devnet.solana.com';
-const ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY || 'development_encryption_key_32_chars';
+const ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY;
+
+if (!ENCRYPTION_KEY || ENCRYPTION_KEY === 'development_encryption_key_32_chars') {
+  throw new Error('WALLET_ENCRYPTION_KEY must be set to a secure 32-byte hex string');
+}
 
 // Determine which RPC to use
 const getRpcEndpoint = () => {
+  console.log('HELIUS_API_KEY value:', HELIUS_API_KEY);
   if (HELIUS_API_KEY && HELIUS_API_KEY !== 'dev_key_placeholder') {
     console.log('Using Helius RPC:', HELIUS_RPC_ENDPOINT);
     return HELIUS_RPC_ENDPOINT;
@@ -60,6 +65,22 @@ export async function decryptPrivateKey(encryptedKey: string): Promise<Keypair> 
   const decryptedHex = CryptoJS.AES.decrypt(encryptedKey, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8);
   const privateKeyBytes = Buffer.from(decryptedHex, 'hex');
   return Keypair.fromSecretKey(new Uint8Array(privateKeyBytes));
+}
+
+// Admin function to get private key for manual DexScreener payments
+export async function getPrivateKeyForAdmin(campaignId: string): Promise<string> {
+  const walletDoc = await db.collection(collections.wallets).doc(campaignId).get();
+  if (!walletDoc.exists) {
+    throw new Error('Campaign wallet not found');
+  }
+  
+  const walletData = walletDoc.data() as WalletInfo;
+  const decryptedHex = CryptoJS.AES.decrypt(walletData.encryptedPrivateKey, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8);
+  
+  // Log access for security audit
+  console.log(`[SECURITY] Private key accessed for campaign ${campaignId} at ${new Date().toISOString()}`);
+  
+  return decryptedHex;
 }
 
 export async function getUSDCBalance(walletAddress: string): Promise<number> {

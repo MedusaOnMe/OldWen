@@ -1,12 +1,14 @@
 import { campaignService } from './campaign.js';
 import { refundService } from './refund.js';
+import { balanceMonitorService } from './balanceMonitor.js';
 
 export class SchedulerService {
-  private intervalId: NodeJS.Timeout | null = null;
+  private deadlineCheckInterval: NodeJS.Timeout | null = null;
+  private balanceMonitorInterval: NodeJS.Timeout | null = null;
   
   start() {
     // Check deadlines every 5 minutes
-    this.intervalId = setInterval(async () => {
+    this.deadlineCheckInterval = setInterval(async () => {
       try {
         await this.checkCampaignDeadlines();
       } catch (error) {
@@ -14,15 +16,28 @@ export class SchedulerService {
       }
     }, 5 * 60 * 1000); // 5 minutes
     
-    console.log('Scheduler service started');
+    // Update campaign balances every 30 seconds
+    this.balanceMonitorInterval = setInterval(async () => {
+      try {
+        await this.updateCampaignBalances();
+      } catch (error) {
+        console.error('Scheduled balance update failed:', error);
+      }
+    }, 30 * 1000); // 30 seconds
+    
+    console.log('Scheduler service started (deadlines: 5min, balances: 30sec)');
   }
   
   stop() {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-      console.log('Scheduler service stopped');
+    if (this.deadlineCheckInterval) {
+      clearInterval(this.deadlineCheckInterval);
+      this.deadlineCheckInterval = null;
     }
+    if (this.balanceMonitorInterval) {
+      clearInterval(this.balanceMonitorInterval);
+      this.balanceMonitorInterval = null;
+    }
+    console.log('Scheduler service stopped');
   }
   
   private async checkCampaignDeadlines() {
@@ -32,6 +47,11 @@ export class SchedulerService {
     await campaignService.checkDeadlines();
     
     console.log('Campaign deadline check completed');
+  }
+  
+  private async updateCampaignBalances() {
+    // Update all active campaign balances using Helius API
+    await balanceMonitorService.updateAllCampaignBalances();
   }
 }
 

@@ -14,23 +14,36 @@ const api = axios.create({
 const transformCampaign = (campaign: any): any => {
   return {
     ...campaign,
+    // Ensure id is always set
+    id: campaign.id,
     tokenMetadata: {
-      name: campaign.tokenName || 'Unknown Token',
-      symbol: campaign.tokenSymbol || 'UNKNOWN',
-      description: campaign.description || '',
-      image: campaign.tokenLogoUrl || '',
-      verified: false
+      name: campaign.tokenMetadata?.name || campaign.tokenName || 'Unknown Token',
+      symbol: campaign.tokenMetadata?.symbol || campaign.tokenSymbol || 'UNKNOWN',
+      description: campaign.tokenMetadata?.description || campaign.description || '',
+      image: campaign.tokenMetadata?.image || campaign.logoUrl || '',
+      verified: campaign.tokenMetadata?.verified || false
     },
-    logoUrl: campaign.tokenLogoUrl || '/placeholder-token.png',
+    logoUrl: campaign.logoUrl || campaign.tokenMetadata?.image || '/placeholder-token.png',
+    tokenLogoUrl: campaign.tokenLogoUrl || campaign.logoUrl || campaign.tokenMetadata?.image || '/placeholder-token.png',
     bannerUrl: campaign.bannerUrl || '/placeholder-banner.jpg',
-    contractAddress: campaign.tokenAddress,
+    contractAddress: campaign.contractAddress || campaign.tokenAddress,
+    tokenAddress: campaign.contractAddress || campaign.tokenAddress,
+    creatorAddress: campaign.createdBy || campaign.creatorAddress,
     contributorCount: campaign.contributorCount || 0,
     socialLinks: campaign.socialLinks || {},
     postFundingAction: campaign.postFundingAction || { type: 'none' },
-    // Convert dates
-    createdAt: new Date(campaign.createdAt),
-    updatedAt: new Date(campaign.updatedAt),
-    deadline: new Date(campaign.deadline)
+    trending: campaign.trending || false,
+    featured: campaign.featured || false,
+    // Convert dates (handle both Firestore Timestamp and ISO strings)
+    createdAt: campaign.createdAt?._seconds 
+      ? new Date(campaign.createdAt._seconds * 1000) 
+      : new Date(campaign.createdAt),
+    updatedAt: campaign.updatedAt?._seconds 
+      ? new Date(campaign.updatedAt._seconds * 1000) 
+      : new Date(campaign.updatedAt),
+    deadline: campaign.deadline?._seconds 
+      ? new Date(campaign.deadline._seconds * 1000) 
+      : new Date(campaign.deadline)
   };
 };
 

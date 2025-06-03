@@ -1,8 +1,68 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import dotenv from "dotenv";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import cors from "cors";
+
+// Load environment variables
+dotenv.config();
+
+// Log environment variables for debugging
+console.log('[Server Startup] Environment variables loaded:');
+console.log('[Server Startup] - NODE_ENV:', process.env.NODE_ENV);
+console.log('[Server Startup] - HELIUS_API_KEY:', process.env.HELIUS_API_KEY ? `${process.env.HELIUS_API_KEY.substring(0, 8)}...` : 'NOT SET');
+console.log('[Server Startup] - VITE_HELIUS_API_KEY:', process.env.VITE_HELIUS_API_KEY ? `${process.env.VITE_HELIUS_API_KEY.substring(0, 8)}...` : 'NOT SET');
+console.log('[Server Startup] - HELIUS_RPC_ENDPOINT:', process.env.HELIUS_RPC_ENDPOINT || 'NOT SET');
 
 const app = express();
+
+// SECURITY MIDDLEWARE
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", "https://firestore.googleapis.com", "https://firebase.googleapis.com", "https://firebasestorage.googleapis.com", "https://api.devnet.solana.com", "https://api.mainnet-beta.solana.com", "https://mainnet.helius-rpc.com", "https://*.helius-rpc.com", "https://api.coingecko.com", "wss:", "ws:"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+
+// CORS PROTECTION
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? (process.env.ALLOWED_ORIGINS?.split(',') || [])
+    : ['http://localhost:3000', 'http://localhost:5173'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// RATE LIMITING
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // requests per window
+  message: 'Too many requests from this IP',
+});
+
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20, // Very restrictive for admin
+  message: 'Too many admin requests from this IP',
+});
+
+app.use('/api', generalLimiter);
+app.use('/api/admin', adminLimiter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -59,12 +119,8 @@ app.use((req, res, next) => {
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  const port = process.env.PORT || 3000;
+  server.listen(port, () => {
     log(`serving on port ${port}`);
   });
 })();

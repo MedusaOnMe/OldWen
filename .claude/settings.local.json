@@ -19,7 +19,16 @@
       "Bash(sed:*)",
       "Bash(true)",
       "Bash(npm run:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(kill:*)",
+      "Bash(touch:*)",
+      "Bash(HELIUS_API_KEY=8349bc43-3182-420a-bade-44ea90bf1c53 npm run dev)",
+      "Bash(find:*)",
+      "Bash(openssl rand:*)",
+      "Bash(__NEW_LINE__ echo -e \"\\n=== TEST 2.2: Client-Side Private Key Operations Search ===\")",
+      "Bash(__NEW_LINE__ echo -e \"\\n=== TEST 2.3: Wallet Service References ===\")",
+      "Bash(__NEW_LINE__ echo -e \"\\n=== TEST 6.2: Contribution Flow Security ===\")",
+      "Bash(__NEW_LINE__ echo -e \"\\n=== TEST 6.3: Private Key Exposure Check ===\")"
     ],
     "deny": []
   }

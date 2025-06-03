@@ -15,14 +15,16 @@ import {
 import { useToast } from '../hooks/use-toast';
 
 import { heliusService, TokenMetadata, TokenValidationResult } from '../services/helius';
-import { walletService } from '../services/wallet';
+import { campaignAPI } from '../services/api';
 import { databaseService } from '../services/database';
+import { imageUploadService } from '../services/imageUpload';
 
 interface SimplifiedCampaignFormData {
   contractAddress: string;
   tokenMetadata: TokenMetadata | null;
   logoImage: File | null;
   bannerImage: File | null;
+  duration: number; // Duration in hours
   socialLinks: {
     telegram?: string;
     twitter?: string;
@@ -41,6 +43,7 @@ export const SimplifiedCampaignCreationForm: React.FC = () => {
     tokenMetadata: null,
     logoImage: null,
     bannerImage: null,
+    duration: 24, // Default to 24 hours
     socialLinks: {}
   });
 
@@ -51,18 +54,6 @@ export const SimplifiedCampaignCreationForm: React.FC = () => {
   const [creationProgress, setCreationProgress] = useState(0);
   const [creationError, setCreationError] = useState<string | null>(null);
 
-  // Debug state changes
-  useEffect(() => {
-    console.log('[Campaign Form] Form data updated:', formData);
-  }, [formData]);
-
-  useEffect(() => {
-    console.log('[Campaign Form] isValidatingToken changed:', isValidatingToken);
-  }, [isValidatingToken]);
-
-  useEffect(() => {
-    console.log('[Campaign Form] tokenError changed:', tokenError);
-  }, [tokenError]);
 
   // Debounced token validation
   const validateToken = useCallback(
@@ -157,11 +148,20 @@ export const SimplifiedCampaignCreationForm: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (5MB limit)
+    // Validate file size and type
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File too large",
         description: "Please choose an image smaller than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please choose an image file",
         variant: "destructive"
       });
       return;
@@ -200,6 +200,14 @@ export const SimplifiedCampaignCreationForm: React.FC = () => {
       }));
     };
     
+    img.onerror = () => {
+      toast({
+        title: "Invalid image",
+        description: "Failed to load the selected image",
+        variant: "destructive"
+      });
+    };
+    
     img.src = URL.createObjectURL(file);
   };
 
@@ -224,55 +232,47 @@ export const SimplifiedCampaignCreationForm: React.FC = () => {
     setCreationError(null);
 
     try {
-      // Step 1: Generate campaign wallet (25%)
-      console.log('[Campaign Creation] Step 1: Generating campaign wallet');
-      setCreationProgress(25);
-      const campaignWallet = await walletService.generateCampaignWallet(
-        `${formData.contractAddress}-${Date.now()}`
-      );
-      console.log('[Campaign Creation] Campaign wallet generated:', campaignWallet.publicKey);
-
-      // Step 2: Upload images (50%)
-      console.log('[Campaign Creation] Step 2: Uploading images');
+      // Step 1: Upload images (50%)
+      console.log('[Campaign Creation] Step 1: Uploading images');
       setCreationProgress(50);
-      const logoUrl = await uploadImage(formData.logoImage!, 'logos');
-      const bannerUrl = await uploadImage(formData.bannerImage!, 'banners');
-      console.log('[Campaign Creation] Images uploaded:', { logoUrl, bannerUrl });
+      
+      const logoResult = await imageUploadService.uploadLogo(formData.logoImage!);
+      const bannerResult = await imageUploadService.uploadBanner(formData.bannerImage!);
+      
+      console.log('[Campaign Creation] Images uploaded:', { 
+        logoUrl: logoResult.url, 
+        bannerUrl: bannerResult.url 
+      });
 
-      // Step 3: Create campaign (75%)
-      console.log('[Campaign Creation] Step 3: Creating campaign in database');
+      // Step 2: Create campaign via API (75%) - Wallet generated server-side
+      console.log('[Campaign Creation] Step 2: Creating campaign via API');
       setCreationProgress(75);
+      
       const campaignData = {
-        contractAddress: formData.contractAddress,
-        tokenMetadata: formData.tokenMetadata,
-        walletAddress: campaignWallet.publicKey,
-        encryptedPrivateKey: campaignWallet.encryptedPrivateKey,
+        tokenAddress: formData.contractAddress,
+        tokenName: formData.tokenMetadata.name,
+        tokenSymbol: formData.tokenMetadata.symbol,
+        tokenLogoUrl: logoResult.url,
+        bannerUrl: bannerResult.url,
+        campaignType: 'enhanced_token_info' as const,
         targetAmount: 299, // Fixed Enhanced Token Info price
-        currentAmount: 0,
-        contributorCount: 0,
-        status: 'active' as const,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: publicKey.toString(),
-        socialLinks: formData.socialLinks,
-        logoUrl,
-        bannerUrl,
+        deadline: new Date(Date.now() + formData.duration * 60 * 60 * 1000), // Selected duration in hours
         description: `Community crowdfunding campaign to purchase Enhanced Token Info for ${formData.tokenMetadata.name} (${formData.tokenMetadata.symbol})`,
-        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-        tags: [formData.tokenMetadata.symbol, 'enhanced-token-info'],
-        featured: false,
-        trending: false,
-        postFundingAction: { type: 'none' as const }
+        creatorAddress: publicKey.toString()
       };
 
-      const campaignId = await databaseService.createCampaign(campaignData);
+      const result = await campaignAPI.create(campaignData);
+      
+      if (!result.success) {
+        throw new Error('Failed to create campaign');
+      }
 
-      // Step 4: Complete (100%)
+      // Step 3: Complete (100%)
       setCreationProgress(100);
 
       // Redirect to campaign page
       setTimeout(() => {
-        setLocation(`/campaign/${campaignId}`);
+        setLocation(`/campaign/${result.campaign.id}`);
       }, 1000);
 
     } catch (error) {
@@ -283,11 +283,6 @@ export const SimplifiedCampaignCreationForm: React.FC = () => {
     }
   };
 
-  // Mock image upload (replace with actual implementation)
-  const uploadImage = async (file: File, folder: string): Promise<string> => {
-    // This would upload to Firebase Storage or similar
-    return URL.createObjectURL(file);
-  };
 
   if (!connected) {
     return (
@@ -375,17 +370,6 @@ export const SimplifiedCampaignCreationForm: React.FC = () => {
             </div>
           )}
 
-          {/* Debug Info */}
-          <div className="card-dark p-4 border border-gray-800 bg-gray-900/50">
-            <h4 className="text-sm font-medium text-gray-400 mb-2">Debug Info:</h4>
-            <div className="text-xs text-gray-500 space-y-1">
-              <div>Address: {formData.contractAddress || 'None'}</div>
-              <div>Validating: {isValidatingToken ? 'Yes' : 'No'}</div>
-              <div>Has Metadata: {formData.tokenMetadata ? 'Yes' : 'No'}</div>
-              <div>Error: {tokenError || 'None'}</div>
-              <div>Connected: {connected ? 'Yes' : 'No'}</div>
-            </div>
-          </div>
         </div>
 
         {/* Social Links */}
@@ -494,6 +478,44 @@ export const SimplifiedCampaignCreationForm: React.FC = () => {
           </div>
         </div>
 
+        {/* Campaign Duration */}
+        <div className="space-y-6">
+          <h3 className="text-xl font-semibold text-white flex items-center">
+            <Clock className="h-6 w-6 mr-3 text-purple-400" />
+            Campaign Duration
+          </h3>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[4, 8, 12, 24].map((hours) => (
+              <button
+                key={hours}
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, duration: hours }))}
+                className={`p-4 rounded-xl border-2 transition-all duration-200 ${
+                  formData.duration === hours
+                    ? 'border-purple-500 bg-purple-500/20 text-white'
+                    : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-purple-500/50 hover:text-gray-300'
+                }`}
+              >
+                <div className="text-center">
+                  <div className="text-2xl font-bold mb-1">{hours}</div>
+                  <div className="text-sm">Hour{hours !== 1 ? 's' : ''}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+          
+          <div className="card-dark p-4 border border-yellow-500/30 bg-yellow-500/10">
+            <div className="flex items-center space-x-3">
+              <AlertCircle className="h-5 w-5 text-yellow-400 flex-shrink-0" />
+              <p className="text-yellow-400 text-sm">
+                Selected duration: <strong className="text-white">{formData.duration} hours</strong>. 
+                Campaign will end at {new Date(Date.now() + formData.duration * 60 * 60 * 1000).toLocaleString()}.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Campaign Info */}
         <div className="card-dark p-6 border border-blue-500/30 bg-blue-500/10">
           <div className="flex items-start space-x-3">
@@ -502,7 +524,7 @@ export const SimplifiedCampaignCreationForm: React.FC = () => {
               <p className="text-blue-400 font-medium mb-2">Campaign Information</p>
               <p className="text-gray-300 leading-relaxed">
                 Your campaign will raise <strong className="text-white">$299 USD</strong> to purchase Enhanced Token Info on DexScreener. 
-                The campaign will run for 30 days or until fully funded.
+                The campaign will run for <strong className="text-white">{formData.duration} hours</strong> or until fully funded.
               </p>
             </div>
           </div>

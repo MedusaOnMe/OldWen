@@ -33,8 +33,8 @@ import PostFundingOption from './PostFundingOption';
 import { ErrorBoundary } from './ErrorBoundary';
 
 import { heliusService, TokenMetadata, TokenValidationResult } from '../services/helius';
-import { walletService, CampaignWallet } from '../services/wallet';
 import { databaseService, Campaign } from '../services/database';
+import { campaignAPI } from '../services/api';
 import { formatTimestamp } from '../utils/timestamp';
 
 // Form data interface
@@ -277,68 +277,44 @@ export const CampaignCreationForm: React.FC = () => {
     setCreationError(null);
 
     try {
-      // Step 1: Generate campaign wallet (20%)
-      setCreationProgress(20);
-      const campaignWallet: CampaignWallet = await walletService.generateCampaignWallet(
-        `${formData.contractAddress}-${Date.now()}`
-      );
-
-      // Step 2: Upload images (40%)
-      setCreationProgress(40);
+      // Step 1: Upload images (30%)
+      setCreationProgress(30);
       const logoUrl = await uploadImageToStorage(formData.logoImage!, 'logos');
       const bannerUrl = await uploadImageToStorage(formData.bannerImage!, 'banners');
 
-      // Step 3: Prepare campaign data (60%)
+      // Step 2: Prepare campaign data (60%)
       setCreationProgress(60);
       const targetAmount = 299; // Base Enhanced Token Info price
       const totalTargetAmount = formData.postFundingAction === 'none' 
         ? targetAmount 
         : targetAmount + (formData.customAmount || 0);
 
-      const campaignData: Omit<Campaign, 'id'> = {
-        contractAddress: formData.contractAddress,
-        tokenMetadata: {
-          name: tokenMetadata.name,
-          symbol: tokenMetadata.symbol,
-          description: tokenMetadata.description,
-          image: tokenMetadata.image,
-          supply: tokenMetadata.supply,
-          decimals: tokenMetadata.decimals,
-          verified: tokenMetadata.verified
-        },
-        walletAddress: campaignWallet.publicKey,
-        encryptedPrivateKey: campaignWallet.encryptedPrivateKey,
+      // Step 3: Create campaign via API (80%) - Wallet generated server-side
+      setCreationProgress(80);
+      const campaignData = {
+        tokenAddress: formData.contractAddress,
+        tokenName: tokenMetadata.name,
+        tokenSymbol: tokenMetadata.symbol,
+        tokenLogoUrl: logoUrl,
+        campaignType: 'enhanced_token_info' as const,
         targetAmount: totalTargetAmount,
-        currentAmount: 0,
-        contributorCount: 0,
-        status: 'active',
-        postFundingAction: {
-          type: formData.postFundingAction,
-          customAmount: formData.customAmount
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: publicKey.toString(),
-        socialLinks: formData.socialLinks,
-        logoUrl,
-        bannerUrl,
+        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         description: formData.description,
-        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-        tags: [tokenMetadata.symbol, 'enhanced-token-info'],
-        featured: false,
-        trending: false
+        creatorAddress: publicKey.toString()
       };
 
-      // Step 4: Create campaign in database (80%)
-      setCreationProgress(80);
-      const campaignId = await databaseService.createCampaign(campaignData);
+      const result = await campaignAPI.create(campaignData);
+      
+      if (!result.success) {
+        throw new Error('Failed to create campaign');
+      }
 
-      // Step 5: Complete (100%)
+      // Step 4: Complete (100%)
       setCreationProgress(100);
 
       // Navigate to campaign page
       setTimeout(() => {
-        setLocation(`/campaign/${campaignId}`);
+        setLocation(`/campaign/${result.campaign.id}`);
       }, 1000);
 
     } catch (error) {
