@@ -1195,6 +1195,7 @@ var TransactionVerificationService = class {
   processedTransactions = /* @__PURE__ */ new Set();
   constructor() {
     this.loadProcessedTransactions();
+    console.log("Transaction verification service using connection:", connection.rpcEndpoint);
   }
   /**
    * Verify a single transaction and update campaign balance if valid
@@ -1304,8 +1305,63 @@ var TransactionVerificationService = class {
     if (!transaction.meta || transaction.meta.err) {
       return { valid: false, error: "Transaction failed or has no metadata" };
     }
-    const preTokenBalances = transaction.meta.preTokenBalances || [];
-    const postTokenBalances = transaction.meta.postTokenBalances || [];
+    const solResult = this.verifySOLTransfer(transaction, campaignWalletAddress, expectedAmount);
+    if (solResult.valid) {
+      return solResult;
+    }
+    const usdcResult = this.verifyUSDCTransfer(transaction, campaignWalletAddress, expectedAmount);
+    if (usdcResult.valid) {
+      return usdcResult;
+    }
+    return {
+      valid: false,
+      error: `No valid SOL or USDC transfer found. SOL error: ${solResult.error}, USDC error: ${usdcResult.error}`
+    };
+  }
+  verifySOLTransfer(transaction, campaignWalletAddress, expectedAmount) {
+    if (!transaction.meta || transaction.meta.err) {
+      return { valid: false, error: "Transaction failed or has no metadata" };
+    }
+    const preBalances = transaction.meta.preBalances || [];
+    const postBalances = transaction.meta.postBalances || [];
+    const accountKeys = transaction.transaction.message.accountKeys.map(
+      (key) => typeof key === "string" ? key : key.pubkey.toBase58()
+    );
+    const campaignWalletIndex = accountKeys.findIndex((key) => key === campaignWalletAddress);
+    if (campaignWalletIndex === -1) {
+      return { valid: false, error: "Campaign wallet not found in transaction" };
+    }
+    const preBalance = preBalances[campaignWalletIndex] || 0;
+    const postBalance = postBalances[campaignWalletIndex] || 0;
+    const balanceChange = (postBalance - preBalance) / 1e9;
+    if (balanceChange <= 0) {
+      return { valid: false, error: `No positive SOL transfer detected. Balance change: ${balanceChange}` };
+    }
+    if (expectedAmount && Math.abs(balanceChange - expectedAmount) > 1e-3) {
+      return {
+        valid: false,
+        error: `SOL amount mismatch: expected ${expectedAmount}, got ${balanceChange}`
+      };
+    }
+    let fromAddress = "";
+    for (let i = 0; i < accountKeys.length; i++) {
+      const pre = preBalances[i] || 0;
+      const post = postBalances[i] || 0;
+      if (pre > post && i !== campaignWalletIndex) {
+        fromAddress = accountKeys[i];
+        break;
+      }
+    }
+    return {
+      valid: true,
+      amount: balanceChange,
+      fromAddress,
+      toAddress: campaignWalletAddress
+    };
+  }
+  verifyUSDCTransfer(transaction, campaignWalletAddress, expectedAmount) {
+    const preTokenBalances = transaction.meta?.preTokenBalances || [];
+    const postTokenBalances = transaction.meta?.postTokenBalances || [];
     const campaignTokenChanges = postTokenBalances.filter(
       (balance) => balance.mint === USDC_MINT3.toBase58() && balance.owner === campaignWalletAddress
     );
@@ -1325,7 +1381,7 @@ var TransactionVerificationService = class {
     if (expectedAmount && Math.abs(amount - expectedAmount) > 0.01) {
       return {
         valid: false,
-        error: `Amount mismatch: expected ${expectedAmount}, got ${amount}`
+        error: `USDC amount mismatch: expected ${expectedAmount}, got ${amount}`
       };
     }
     if (amount < 5) {
@@ -1367,30 +1423,56 @@ var TransactionVerificationService = class {
    */
   async setupHeliusWebhook(walletAddress) {
     try {
-      const webhookUrl = process.env.HELIUS_WEBHOOK_URL;
-      if (!webhookUrl) {
+      const webhookUrl2 = process.env.HELIUS_WEBHOOK_URL;
+      console.log(`[Webhook Setup] Using webhook URL: ${webhookUrl2}`);
+      console.log(`[Webhook Setup] Setting up for wallet: ${walletAddress}`);
+      if (!webhookUrl2) {
         console.warn("HELIUS_WEBHOOK_URL not configured, falling back to polling");
         return;
       }
+      const webhookPayload = {
+        webhookURL: webhookUrl2,
+        transactionTypes: ["TRANSFER", "SWAP", "Any"],
+        accountAddresses: [walletAddress],
+        webhookType: "enhanced"
+      };
+      const webhookSecret = process.env.HELIUS_WEBHOOK_SECRET;
+      if (webhookSecret && webhookSecret !== "dev_webhook_secret") {
+        webhookPayload.authHeader = `X-Webhook-Secret: ${webhookSecret}`;
+        console.log(`[Webhook Setup] Adding authentication header for security`);
+      } else {
+        console.log(`[Webhook Setup] No webhook secret configured - webhook will be unsecured`);
+      }
       const response = await axios.post(
         `https://api.helius.xyz/v0/webhooks?api-key=${HELIUS_API_KEY2}`,
-        {
+        webhookPayload
+      );
+      console.log(`[Webhook Setup] Success! Webhook ID: ${response.data.webhookID}`);
+      console.log(`[Webhook Setup] Response:`, response.data);
+    } catch (error) {
+      console.error("Failed to set up Helius webhook:", error);
+      if (error.response) {
+        console.error("[Webhook Setup] Response status:", error.response.status);
+        console.error("[Webhook Setup] Response data:", error.response.data);
+        console.error("[Webhook Setup] Response headers:", error.response.headers);
+      }
+      console.error("[Webhook Setup] Request config:", {
+        url: `https://api.helius.xyz/v0/webhooks?api-key=${HELIUS_API_KEY2}`,
+        method: "POST",
+        data: {
           webhookURL: webhookUrl,
           transactionTypes: ["TRANSFER"],
           accountAddresses: [walletAddress],
           webhookType: "enhanced"
         }
-      );
-      console.log(`Helius webhook configured for wallet ${walletAddress}:`, response.data);
-    } catch (error) {
-      console.error("Failed to set up Helius webhook:", error);
+      });
     }
   }
   /**
    * Polling fallback for transaction monitoring
    */
   startTransactionPolling(campaignId, publicKey) {
-    const pollInterval = 3e4;
+    const pollInterval = 3e5;
     const poll = async () => {
       try {
         const signatures = await connection.getSignaturesForAddress(publicKey, { limit: 10 });
@@ -1619,17 +1701,35 @@ var HeliusWebhookService = class {
    * Verify webhook signature for security
    */
   verifyWebhookSignature(req) {
-    if (!WEBHOOK_SECRET) {
-      console.warn("HELIUS_WEBHOOK_SECRET not configured - skipping signature verification");
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Development mode - skipping webhook signature verification");
       return true;
+    }
+    if (!WEBHOOK_SECRET) {
+      console.error("HELIUS_WEBHOOK_SECRET not configured in production!");
+      return false;
+    }
+    const customSecret = req.headers["x-webhook-secret"];
+    if (customSecret) {
+      const isValid2 = customSecret === WEBHOOK_SECRET;
+      if (!isValid2) {
+        console.warn(`Custom webhook secret verification failed`);
+      }
+      return isValid2;
     }
     const signature = req.headers["x-helius-signature"];
     if (!signature) {
+      console.warn("No x-helius-signature or x-webhook-secret header found");
       return false;
     }
-    const body = JSON.stringify(req.body);
-    const expectedSignature = crypto.createHmac("sha256", WEBHOOK_SECRET).update(body).digest("hex");
-    return signature === expectedSignature;
+    const expectedSignature = "sha256=" + crypto.createHmac("sha256", WEBHOOK_SECRET).update(JSON.stringify(req.body)).digest("hex");
+    const isValid = signature === expectedSignature;
+    if (!isValid) {
+      console.warn(`Webhook signature verification failed`);
+      console.warn(`Expected format: sha256=<hash>`);
+      console.warn(`Received: ${signature}`);
+    }
+    return isValid;
   }
   /**
    * Process individual transaction from webhook
@@ -1637,18 +1737,98 @@ var HeliusWebhookService = class {
   async processTransaction(transaction) {
     try {
       console.log(`Processing transaction: ${transaction.signature}`);
+      const solTransfers = this.extractSOLTransfers(transaction);
+      if (solTransfers.length > 0) {
+        for (const transfer of solTransfers) {
+          await this.processSOLTransfer(transaction, transfer);
+        }
+        return;
+      }
       const usdcTransfers = transaction.tokenTransfers?.filter(
         (transfer) => transfer.mint === USDC_MINT5
       ) || [];
-      if (usdcTransfers.length === 0) {
-        console.log(`No USDC transfers in transaction ${transaction.signature}`);
+      if (usdcTransfers.length > 0) {
+        console.log(`Processing USDC transfers in transaction ${transaction.signature}`);
+        for (const transfer of usdcTransfers) {
+          await this.processUSDCTransfer(transaction, transfer);
+        }
         return;
       }
-      for (const transfer of usdcTransfers) {
-        await this.processUSDCTransfer(transaction, transfer);
-      }
+      console.log(`No SOL or USDC transfers in transaction ${transaction.signature}`);
     } catch (error) {
       console.error(`Error processing transaction ${transaction.signature}:`, error);
+    }
+  }
+  /**
+   * Extract SOL transfers from account data
+   */
+  extractSOLTransfers(transaction) {
+    const transfers = [];
+    if (transaction.nativeTransfers && transaction.nativeTransfers.length > 0) {
+      return transaction.nativeTransfers;
+    }
+    const accounts = transaction.accountData || [];
+    const positiveChanges = accounts.filter((acc) => acc.nativeBalanceChange > 0);
+    const negativeChanges = accounts.filter((acc) => acc.nativeBalanceChange < 0);
+    for (const positive of positiveChanges) {
+      for (const negative of negativeChanges) {
+        if (Math.abs(positive.nativeBalanceChange) === Math.abs(negative.nativeBalanceChange)) {
+          transfers.push({
+            fromUserAccount: negative.account,
+            toUserAccount: positive.account,
+            amount: positive.nativeBalanceChange
+          });
+        }
+      }
+    }
+    return transfers;
+  }
+  /**
+   * Process SOL transfer and update campaign if relevant
+   */
+  async processSOLTransfer(transaction, transfer) {
+    try {
+      const campaignWallet = await this.findCampaignByWallet(transfer.toUserAccount);
+      if (!campaignWallet) {
+        console.log(`SOL transfer to ${transfer.toUserAccount} - not a campaign wallet`);
+        return;
+      }
+      const campaignId = campaignWallet.campaignId;
+      const amount = transfer.amount / 1e9;
+      console.log(`SOL transfer detected: ${amount} SOL to campaign ${campaignId}`);
+      const verification = await transactionVerificationService.verifyTransaction(
+        transaction.signature,
+        campaignId,
+        amount
+      );
+      if (!verification.valid) {
+        console.warn(`SOL transaction verification failed for ${transaction.signature}:`, verification.error);
+        return;
+      }
+      const suspiciousActivity = await transactionVerificationService.detectSuspiciousActivity(
+        transfer.fromUserAccount,
+        amount,
+        campaignId
+      );
+      if (suspiciousActivity.suspicious) {
+        console.warn(`Suspicious SOL activity detected for transaction ${transaction.signature}:`, suspiciousActivity.reasons);
+        await this.recordSuspiciousActivity(transaction.signature, campaignId, suspiciousActivity);
+      }
+      await this.recordSOLContribution(transaction, transfer, campaignId, verification);
+      const solToUsdRate = 156;
+      const usdAmount = amount * solToUsdRate;
+      await this.updateCampaignBalance(campaignId, usdAmount);
+      this.broadcastUpdate(campaignId, {
+        type: "new_contribution",
+        signature: transaction.signature,
+        amount,
+        contributor: transfer.fromUserAccount,
+        timestamp: new Date(transaction.timestamp * 1e3),
+        currency: "SOL"
+      });
+      console.log(`Successfully processed SOL contribution: ${amount} SOL to campaign ${campaignId}`);
+    } catch (error) {
+      console.error("Error processing SOL transfer:", error);
     }
   }
   /**
@@ -1713,7 +1893,31 @@ var HeliusWebhookService = class {
     }
   }
   /**
-   * Record contribution in database
+   * Record SOL contribution in database
+   */
+  async recordSOLContribution(transaction, transfer, campaignId, verification) {
+    try {
+      const contributionRef = db.collection(collections.contributions).doc();
+      const contribution = {
+        id: contributionRef.id,
+        campaignId,
+        contributorAddress: transfer.fromUserAccount,
+        amount: verification.amount,
+        transactionHash: transaction.signature,
+        timestamp: new Date(transaction.timestamp * 1e3),
+        status: "confirmed",
+        blockHeight: transaction.slot,
+        verificationMethod: "helius_webhook",
+        currency: "SOL"
+      };
+      await contributionRef.set(contribution);
+      console.log(`SOL Contribution recorded: ${contribution.id}`);
+    } catch (error) {
+      console.error("Error recording SOL contribution:", error);
+    }
+  }
+  /**
+   * Record USDC contribution in database
    */
   async recordContribution(transaction, transfer, campaignId, verification) {
     try {
@@ -1752,6 +1956,7 @@ var HeliusWebhookService = class {
         currentAmount: newBalance,
         updatedAt: /* @__PURE__ */ new Date()
       });
+      console.log(`Campaign ${campaignId} balance updated: +$${contributionAmount.toFixed(2)} = $${newBalance.toFixed(2)} total`);
       if (newBalance >= campaignData.targetAmount && campaignData.status === "active") {
         console.log(`Campaign ${campaignId} reached target! Triggering service purchase...`);
         await campaignRef.update({
@@ -2322,7 +2527,23 @@ var CampaignService = class {
       query = query.orderBy("createdAt", "desc");
     }
     const snapshot = await query.limit(50).get();
-    const campaigns = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const campaigns = await Promise.all(
+      snapshot.docs.map(async (doc) => {
+        const campaignData = doc.data();
+        const contributionsSnapshot = await db.collection(collections.contributions).where("campaignId", "==", doc.id).get();
+        const contributions = contributionsSnapshot.docs.map((doc2) => doc2.data());
+        console.log(`Campaign ${doc.id} has ${contributions.length} total contributions`);
+        const confirmedContributions = contributions.filter((c) => c.status === "confirmed");
+        const pendingContributions = contributions.filter((c) => c.status === "pending");
+        const totalContributions = confirmedContributions.length > 0 ? confirmedContributions.length : pendingContributions.length;
+        console.log(`Campaign ${doc.id}: ${confirmedContributions.length} confirmed, ${pendingContributions.length} pending, ${totalContributions} total contributions`);
+        return {
+          id: doc.id,
+          ...campaignData,
+          contributionCount: totalContributions
+        };
+      })
+    );
     return campaigns.sort((a, b) => {
       const dateA = new Date(a.createdAt).getTime();
       const dateB = new Date(b.createdAt).getTime();
@@ -2366,9 +2587,13 @@ var CampaignService = class {
   }
   async setupCampaignMonitoring(campaignId, walletAddress) {
     try {
+      console.log(`[Campaign Creation] Setting up monitoring for campaign ${campaignId}`);
+      console.log(`[Campaign Creation] Wallet address: ${walletAddress}`);
+      console.log(`[Campaign Creation] Setting up Helius webhook...`);
       await heliusWebhookService.setupWebhookForCampaign(campaignId, walletAddress);
+      console.log(`[Campaign Creation] Starting transaction verification monitoring...`);
       await transactionVerificationService.monitorCampaignWallet(campaignId, walletAddress);
-      console.log(`Monitoring setup complete for campaign ${campaignId}`);
+      console.log(`[Campaign Creation] Monitoring setup complete for campaign ${campaignId}`);
     } catch (error) {
       console.error(`Failed to setup monitoring for campaign ${campaignId}:`, error);
       this.startBasicBalanceMonitoring(campaignId, walletAddress);
@@ -2390,17 +2615,30 @@ var CampaignService = class {
         throw new Error("Contribution not found");
       }
       const contribution = contributionDoc.data();
+      console.log(`Verifying transaction ${txHash} for contribution ${contributionId}`);
       const verification = await transactionVerificationService.verifyTransaction(
         txHash,
         contribution.campaignId,
         contribution.amount
       );
+      console.log(`Verification result for ${txHash}:`, verification);
       if (verification.valid) {
+        console.log(`Transaction ${txHash} verified successfully`);
         await db.collection(collections.contributions).doc(contributionId).update({
           status: "confirmed",
           verifiedAt: /* @__PURE__ */ new Date()
         });
+        console.log(`Updating campaign ${contribution.campaignId} balance with ${verification.amount} SOL`);
+        const campaign = await this.getCampaign(contribution.campaignId);
+        if (campaign) {
+          const solToUsdRate = 156;
+          const usdAmount = verification.amount * solToUsdRate;
+          const newAmount = (campaign.currentAmount || 0) + usdAmount;
+          await this.updateCampaignAmount(contribution.campaignId, newAmount);
+          console.log(`Campaign ${contribution.campaignId} balance updated: +${verification.amount} SOL (~$${usdAmount.toFixed(2)}) = $${newAmount.toFixed(2)} total`);
+        }
       } else {
+        console.log(`Transaction ${txHash} verification failed:`, verification.error);
         await db.collection(collections.contributions).doc(contributionId).update({
           status: "failed",
           verificationError: verification.error
@@ -2429,6 +2667,31 @@ var CampaignService = class {
       }
     } catch (error) {
       console.error(`Failed to trigger service purchase for campaign ${campaignId}:`, error);
+    }
+  }
+  async getPlatformStats() {
+    try {
+      const campaignsSnapshot = await db.collection(collections.campaigns).get();
+      const campaigns = campaignsSnapshot.docs.map((doc) => doc.data());
+      const contributionsSnapshot = await db.collection(collections.contributions).where("status", "==", "confirmed").get();
+      const totalContributions = contributionsSnapshot.size;
+      const totalCampaigns = campaigns.length;
+      const activeCampaigns = campaigns.filter((c) => c.status === "active").length;
+      const totalFunded = campaigns.reduce((sum, c) => sum + (c.currentAmount || 0), 0);
+      return {
+        totalCampaigns,
+        activeCampaigns,
+        totalFunded,
+        totalContributions
+      };
+    } catch (error) {
+      console.error("Error getting platform stats:", error);
+      return {
+        totalCampaigns: 0,
+        activeCampaigns: 0,
+        totalFunded: 0,
+        totalContributions: 0
+      };
     }
   }
   async checkDeadlines() {
@@ -2554,6 +2817,15 @@ router.post("/campaigns/:id/contribute", async (req, res) => {
     });
   }
 });
+router.get("/stats/platform", async (req, res) => {
+  try {
+    const stats = await campaignService.getPlatformStats();
+    res.json({ success: true, stats });
+  } catch (error) {
+    console.error("Error getting platform stats:", error);
+    res.status(500).json({ success: false, error: "Failed to get platform stats" });
+  }
+});
 var campaigns_default = router;
 
 // server/routes/balances.ts
@@ -2585,6 +2857,7 @@ var balances_default = router2;
 init_firebase();
 import { Router as Router3 } from "express";
 init_DexScreenerService();
+import axios4 from "axios";
 var router3 = Router3();
 var ADMIN_SECRET = process.env.ADMIN_SECRET_KEY;
 var authenticateAdmin = (req, res, next) => {
@@ -2658,13 +2931,11 @@ router3.get("/campaigns", async (req, res) => {
       snapshot.docs.map(async (doc) => {
         const campaignData = doc.data();
         const contributionsSnapshot = await db.collection(collections.contributions).where("campaignId", "==", doc.id).where("status", "==", "confirmed").get();
-        const uniqueContributors = new Set(
-          contributionsSnapshot.docs.map((contrib) => contrib.data().contributorAddress)
-        ).size;
+        const totalContributions = contributionsSnapshot.size;
         return {
           id: doc.id,
           ...campaignData,
-          contributorCount: uniqueContributors
+          contributionCount: totalContributions
         };
       })
     );
@@ -2951,6 +3222,161 @@ router3.post("/platform/resume", async (req, res) => {
     res.status(500).json({ error: "Failed to resume platform" });
   }
 });
+router3.post("/fix-webhook-types", async (req, res) => {
+  try {
+    const HELIUS_API_KEY4 = process.env.HELIUS_API_KEY;
+    if (!HELIUS_API_KEY4) {
+      return res.status(500).json({ error: "Missing Helius API key" });
+    }
+    const webhooksResponse = await axios4.get(
+      `https://api.helius.xyz/v0/webhooks?api-key=${HELIUS_API_KEY4}`
+    );
+    const webhooks = webhooksResponse.data;
+    const results = [];
+    for (const webhook of webhooks) {
+      if (webhook.transactionTypes.includes("TRANSFER") && !webhook.transactionTypes.includes("Any")) {
+        try {
+          await axios4.put(
+            `https://api.helius.xyz/v0/webhooks/${webhook.webhookID}?api-key=${HELIUS_API_KEY4}`,
+            {
+              webhookURL: webhook.webhookURL,
+              transactionTypes: ["Any"],
+              accountAddresses: webhook.accountAddresses,
+              webhookType: webhook.webhookType
+            }
+          );
+          results.push({
+            webhookID: webhook.webhookID,
+            oldTypes: webhook.transactionTypes,
+            newTypes: ["Any"],
+            status: "updated"
+          });
+        } catch (updateError) {
+          results.push({
+            webhookID: webhook.webhookID,
+            oldTypes: webhook.transactionTypes,
+            status: "error",
+            error: updateError.message
+          });
+        }
+      } else {
+        results.push({
+          webhookID: webhook.webhookID,
+          transactionTypes: webhook.transactionTypes,
+          status: "already_correct"
+        });
+      }
+    }
+    res.json({
+      success: true,
+      totalWebhooks: webhooks.length,
+      results
+    });
+  } catch (error) {
+    console.error("Fix webhook types error:", error);
+    res.status(500).json({ error: "Failed to fix webhook types" });
+  }
+});
+router3.post("/update-webhooks", async (req, res) => {
+  try {
+    const HELIUS_API_KEY4 = process.env.HELIUS_API_KEY;
+    const correctWebhookUrl = process.env.HELIUS_WEBHOOK_URL;
+    if (!HELIUS_API_KEY4 || !correctWebhookUrl) {
+      return res.status(500).json({ error: "Missing API key or webhook URL" });
+    }
+    const webhooksResponse = await axios4.get(
+      `https://api.helius.xyz/v0/webhooks?api-key=${HELIUS_API_KEY4}`
+    );
+    const webhooks = webhooksResponse.data;
+    const results = [];
+    for (const webhook of webhooks) {
+      if (webhook.webhookURL !== correctWebhookUrl) {
+        try {
+          await axios4.put(
+            `https://api.helius.xyz/v0/webhooks/${webhook.webhookID}?api-key=${HELIUS_API_KEY4}`,
+            {
+              webhookURL: correctWebhookUrl,
+              transactionTypes: webhook.transactionTypes,
+              accountAddresses: webhook.accountAddresses,
+              webhookType: webhook.webhookType
+            }
+          );
+          results.push({
+            webhookID: webhook.webhookID,
+            oldURL: webhook.webhookURL,
+            newURL: correctWebhookUrl,
+            status: "updated"
+          });
+        } catch (updateError) {
+          results.push({
+            webhookID: webhook.webhookID,
+            oldURL: webhook.webhookURL,
+            status: "error",
+            error: updateError.message
+          });
+        }
+      } else {
+        results.push({
+          webhookID: webhook.webhookID,
+          url: webhook.webhookURL,
+          status: "already_correct"
+        });
+      }
+    }
+    res.json({
+      success: true,
+      correctWebhookUrl,
+      totalWebhooks: webhooks.length,
+      results
+    });
+  } catch (error) {
+    console.error("Update webhooks error:", error);
+    res.status(500).json({ error: "Failed to update webhooks" });
+  }
+});
+router3.post("/setup-webhooks", async (req, res) => {
+  try {
+    const campaignsSnapshot = await db.collection(collections.campaigns).where("status", "==", "active").get();
+    const results = [];
+    for (const campaignDoc of campaignsSnapshot.docs) {
+      const campaignData = campaignDoc.data();
+      if (campaignData.walletAddress) {
+        try {
+          await transactionVerificationService.monitorCampaignWallet(
+            campaignDoc.id,
+            campaignData.walletAddress
+          );
+          results.push({
+            campaignId: campaignDoc.id,
+            walletAddress: campaignData.walletAddress,
+            status: "success"
+          });
+        } catch (error) {
+          results.push({
+            campaignId: campaignDoc.id,
+            walletAddress: campaignData.walletAddress,
+            status: "error",
+            error: error.message
+          });
+        }
+      }
+    }
+    await db.collection("admin_actions").add({
+      type: "webhooks_setup",
+      campaignsProcessed: results.length,
+      timestamp: /* @__PURE__ */ new Date(),
+      adminAction: true
+    });
+    res.json({
+      success: true,
+      campaignsProcessed: results.length,
+      results
+    });
+  } catch (error) {
+    console.error("Setup webhooks error:", error);
+    res.status(500).json({ error: "Failed to setup webhooks" });
+  }
+});
 router3.get("/export/:type", async (req, res) => {
   try {
     const { type } = req.params;
@@ -3021,6 +3447,13 @@ var admin_default = router3;
 import { Router as Router4 } from "express";
 var router4 = Router4();
 router4.post("/helius-webhook", async (req, res) => {
+  console.log("\u{1F680} WEBHOOK RECEIVED!");
+  console.log("Headers:", req.headers);
+  console.log("Body type:", typeof req.body);
+  console.log("Body length:", Array.isArray(req.body) ? req.body.length : "not array");
+  if (Array.isArray(req.body) && req.body.length > 0) {
+    console.log("First transaction:", req.body[0]);
+  }
   await heliusWebhookService.processWebhook(req, res);
 });
 router4.get("/webhook/health", async (req, res) => {
@@ -3034,7 +3467,7 @@ router4.get("/webhook/health", async (req, res) => {
 var webhook_default = router4;
 
 // server/routes/helius.ts
-import axios4 from "axios";
+import axios5 from "axios";
 console.log("[Server Helius API] Module loaded");
 async function validateToken(req, res) {
   try {
@@ -3062,9 +3495,10 @@ async function validateToken(req, res) {
     }
     const HELIUS_API_KEY4 = process.env.HELIUS_API_KEY;
     console.log("[Server Helius API] Environment check:");
-    if (process.env.NODE_ENV === "development") {
-      console.log("[Server Helius API] - API key configured:", !!HELIUS_API_KEY4);
-    }
+    console.log("[Server Helius API] - NODE_ENV:", process.env.NODE_ENV);
+    console.log("[Server Helius API] - API key configured:", !!HELIUS_API_KEY4);
+    console.log("[Server Helius API] - API key length:", HELIUS_API_KEY4?.length);
+    console.log("[Server Helius API] - API key first 8 chars:", HELIUS_API_KEY4?.substring(0, 8));
     console.log(`[Server Helius API] Validating token: ${contractAddress}`);
     if (!HELIUS_API_KEY4) {
       console.log("[Server Helius API] ERROR: No Helius API key configured");
@@ -3080,7 +3514,7 @@ async function validateToken(req, res) {
         mintAccounts: [contractAddress]
       };
       console.log("[Server Helius API] Making token metadata request");
-      const response = await axios4.post(
+      const response = await axios5.post(
         apiUrl,
         requestPayload,
         {
@@ -3482,6 +3916,10 @@ import cors from "cors";
 dotenv2.config();
 console.log("[Server Startup] Environment variables loaded:");
 console.log("[Server Startup] - NODE_ENV:", process.env.NODE_ENV);
+console.log("[Server Startup] - HELIUS_API_KEY exists:", !!process.env.HELIUS_API_KEY);
+console.log("[Server Startup] - HELIUS_API_KEY length:", process.env.HELIUS_API_KEY?.length);
+console.log("[Server Startup] - HELIUS_API_KEY first 8:", process.env.HELIUS_API_KEY?.substring(0, 8));
+console.log("[Server Startup] - HELIUS_WEBHOOK_URL:", process.env.HELIUS_WEBHOOK_URL);
 if (process.env.NODE_ENV === "development") {
   console.log("[Server Startup] - Helius integration configured");
 }
@@ -3490,11 +3928,11 @@ app2.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://replit.com", "https://*.replit.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
-      connectSrc: ["'self'", "https://firestore.googleapis.com", "https://firebase.googleapis.com", "https://firebasestorage.googleapis.com", "https://api.devnet.solana.com", "https://api.mainnet-beta.solana.com", "https://mainnet.helius-rpc.com", "https://*.helius-rpc.com", "https://api.coingecko.com", "wss:", "ws:"]
+      connectSrc: ["'self'", "https://firestore.googleapis.com", "https://firebase.googleapis.com", "https://firebasestorage.googleapis.com", "https://api.devnet.solana.com", "https://api.mainnet-beta.solana.com", "https://mainnet.helius-rpc.com", "https://*.helius-rpc.com", "https://api.coingecko.com", "https://solana-api.projectserum.com", "wss:", "ws:"]
     }
   },
   hsts: {

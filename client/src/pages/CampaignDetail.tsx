@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Clock, Copy, DollarSign, ExternalLink, Loader2, Users, Wallet } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { formatDetailedTimeRemaining } from '../utils/timestamp';
+import { formatContribution } from '../utils/currency';
 import { useToast } from '../hooks/use-toast';
 import { Layout } from '../components/Layout';
 
@@ -272,7 +273,22 @@ export function CampaignDetailPage() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-lg font-semibold text-white">${contribution.amount.toFixed(2)}</p>
+                              {(() => {
+                                // Most contributions are SOL since that's what we primarily accept
+                                // Default to SOL unless explicitly marked as USDC
+                                const currency = contribution.currency || 'SOL';
+                                const formatted = formatContribution(contribution.amount, currency);
+                                return (
+                                  <>
+                                    <p className="text-lg font-semibold text-white">
+                                      {formatted.primary}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {formatted.secondary}
+                                    </p>
+                                  </>
+                                );
+                              })()}
                               <div className={`text-xs px-2 py-1 rounded ${
                                 contribution.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
                               }`}>
@@ -305,10 +321,10 @@ export function CampaignDetailPage() {
               <div className="space-y-4">
                 <div className="flex justify-between items-end">
                   <span className="text-3xl font-bold text-white">
-                    ${campaign.currentAmount.toFixed(0)}
+                    ${campaign.currentAmount.toFixed(2)}
                   </span>
                   <span className="text-gray-400">
-                    of ${campaign.targetAmount.toFixed(0)}
+                    of ${campaign.targetAmount.toFixed(2)}
                   </span>
                 </div>
                 
@@ -331,7 +347,7 @@ export function CampaignDetailPage() {
                     <Users className="h-5 w-5 mr-2 text-blue-400" />
                     <span className="text-xl font-bold text-white">{contributions.length}</span>
                   </div>
-                  <p className="text-sm text-gray-400">Contributors</p>
+                  <p className="text-sm text-gray-400">Contributions</p>
                 </div>
                 <div className="text-center">
                   <div className="flex items-center justify-center mb-2">

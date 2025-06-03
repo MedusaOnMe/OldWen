@@ -90,12 +90,12 @@ export class CampaignService {
     
     const snapshot = await query.limit(50).get();
     
-    // Get campaigns with contributor counts
+    // Get campaigns with contribution counts
     const campaigns = await Promise.all(
       snapshot.docs.map(async (doc) => {
         const campaignData = doc.data();
         
-        // Get unique contributor count (check both confirmed and pending)
+        // Get total contribution count (check both confirmed and pending)
         const contributionsSnapshot = await db.collection(collections.contributions)
           .where('campaignId', '==', doc.id)
           .get();
@@ -103,22 +103,19 @@ export class CampaignService {
         const contributions = contributionsSnapshot.docs.map(doc => doc.data());
         console.log(`Campaign ${doc.id} has ${contributions.length} total contributions`);
         
-        // Count unique contributors from confirmed contributions, but fall back to pending if no confirmed
+        // Count confirmed contributions, but fall back to pending if no confirmed
         const confirmedContributions = contributions.filter(c => c.status === 'confirmed');
         const pendingContributions = contributions.filter(c => c.status === 'pending');
         
         // Use confirmed if available, otherwise use pending
-        const contributionsToCount = confirmedContributions.length > 0 ? confirmedContributions : pendingContributions;
-        const uniqueContributors = new Set(
-          contributionsToCount.map(contrib => contrib.contributorAddress)
-        ).size;
+        const totalContributions = confirmedContributions.length > 0 ? confirmedContributions.length : pendingContributions.length;
         
-        console.log(`Campaign ${doc.id}: ${confirmedContributions.length} confirmed, ${pendingContributions.length} pending, ${uniqueContributors} unique contributors`);
+        console.log(`Campaign ${doc.id}: ${confirmedContributions.length} confirmed, ${pendingContributions.length} pending, ${totalContributions} total contributions`);
         
         return {
           id: doc.id,
           ...campaignData,
-          contributorCount: uniqueContributors
+          contributionCount: totalContributions
         } as Campaign;
       })
     );
@@ -300,6 +297,45 @@ export class CampaignService {
     }
   }
   
+  async getPlatformStats(): Promise<{
+    totalCampaigns: number;
+    activeCampaigns: number;
+    totalFunded: number;
+    totalContributions: number;
+  }> {
+    try {
+      // Get all campaigns
+      const campaignsSnapshot = await db.collection(collections.campaigns).get();
+      const campaigns = campaignsSnapshot.docs.map(doc => doc.data());
+      
+      // Get all confirmed contributions to count total contributions
+      const contributionsSnapshot = await db.collection(collections.contributions)
+        .where('status', '==', 'confirmed')
+        .get();
+      
+      const totalContributions = contributionsSnapshot.size;
+      
+      const totalCampaigns = campaigns.length;
+      const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
+      const totalFunded = campaigns.reduce((sum, c) => sum + (c.currentAmount || 0), 0);
+      
+      return {
+        totalCampaigns,
+        activeCampaigns,
+        totalFunded,
+        totalContributions
+      };
+    } catch (error) {
+      console.error('Error getting platform stats:', error);
+      return {
+        totalCampaigns: 0,
+        activeCampaigns: 0,
+        totalFunded: 0,
+        totalContributions: 0
+      };
+    }
+  }
+
   async checkDeadlines(): Promise<void> {
     try {
       const now = new Date();

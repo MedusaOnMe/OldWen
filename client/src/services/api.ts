@@ -29,7 +29,7 @@ const transformCampaign = (campaign: any): any => {
     contractAddress: campaign.contractAddress || campaign.tokenAddress,
     tokenAddress: campaign.contractAddress || campaign.tokenAddress,
     creatorAddress: campaign.createdBy || campaign.creatorAddress,
-    contributorCount: campaign.contributorCount || 0,
+    contributionCount: campaign.contributionCount || 0,
     socialLinks: campaign.socialLinks || {},
     postFundingAction: campaign.postFundingAction || { type: 'none' },
     trending: campaign.trending || false,
@@ -94,6 +94,19 @@ export const campaignAPI = {
       `/campaigns/${campaignId}/contribute`,
       data
     );
+    return response.data;
+  },
+
+  getPlatformStats: async () => {
+    const response = await api.get<{ 
+      success: boolean; 
+      stats: {
+        totalCampaigns: number;
+        activeCampaigns: number;
+        totalFunded: number;
+        totalContributions: number;
+      }
+    }>('/stats/platform');
     return response.data;
   },
 };

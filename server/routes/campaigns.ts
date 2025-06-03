@@ -92,4 +92,15 @@ router.post('/campaigns/:id/contribute', async (req, res) => {
   }
 });
 
+// Platform-wide statistics
+router.get('/stats/platform', async (req, res) => {
+  try {
+    const stats = await campaignService.getPlatformStats();
+    res.json({ success: true, stats });
+  } catch (error) {
+    console.error('Error getting platform stats:', error);
+    res.status(500).json({ success: false, error: 'Failed to get platform stats' });
+  }
+});
+
 export default router;

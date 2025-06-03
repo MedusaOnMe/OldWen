@@ -21,7 +21,7 @@ export interface Campaign {
   updatedAt: Date;
   completedAt?: Date;
   serviceDetails?: any;
-  contributorCount?: number;
+  contributionCount?: number;
 }
 
 export interface Contribution {
@@ -32,6 +32,7 @@ export interface Contribution {
   transactionHash: string;
   timestamp: Date;
   status: 'pending' | 'confirmed' | 'failed';
+  currency?: 'SOL' | 'USDC';
   refunded?: boolean;
   refundTxHash?: string;
 }

@@ -3,22 +3,24 @@ import { ArrowRight, BarChart3, Shield, Zap, TrendingUp, Users, DollarSign } fro
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { campaignAPI } from "@/services/api";
+import { formatCurrency } from "@/utils/currency";
 
 export default function Hero() {
   const [, setLocation] = useLocation();
   
-  const { data: campaignsData } = useQuery({
-    queryKey: ['campaigns-stats'],
-    queryFn: () => campaignAPI.list({ status: 'active' }),
+  const { data: platformStats } = useQuery({
+    queryKey: ['platform-stats'],
+    queryFn: () => campaignAPI.getPlatformStats(),
   });
 
-  const activeCampaigns = campaignsData?.campaigns?.length || 0;
-  const totalFunded = campaignsData?.campaigns?.reduce((sum, c) => sum + c.currentAmount, 0) || 0;
+  const activeCampaigns = platformStats?.stats?.activeCampaigns || 0;
+  const totalFunded = platformStats?.stats?.totalFunded || 0;
+  const totalContributions = platformStats?.stats?.totalContributions || 0;
 
   const stats = [
     { label: 'Active Campaigns', value: activeCampaigns.toString(), icon: TrendingUp },
-    { label: 'Total Raised', value: totalFunded > 0 ? `$${(totalFunded / 1000).toFixed(1)}K` : '$0', icon: DollarSign },
-    { label: 'Contributors', value: '0', icon: Users },
+    { label: 'Total Raised', value: formatCurrency(totalFunded), icon: DollarSign },
+    { label: 'Contributions', value: totalContributions.toString(), icon: Users },
   ];
 
   return (
@@ -131,10 +133,10 @@ export default function Hero() {
                   <div className="grid grid-cols-2 gap-6 pt-6 border-t border-gray-800">
                     <div className="text-center">
                       <div className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">0</div>
-                      <p className="text-base text-gray-400 mt-2">Contributors</p>
+                      <p className="text-base text-gray-400 mt-2">Contributions</p>
                     </div>
                     <div className="text-center">
-                      <div className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">30d</div>
+                      <div className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">12h</div>
                       <p className="text-base text-gray-400 mt-2">Time Left</p>
                     </div>
                   </div>
