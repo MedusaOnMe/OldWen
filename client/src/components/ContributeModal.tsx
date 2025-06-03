@@ -149,7 +149,7 @@ export function ContributeModal({ campaign, isOpen, onClose, onSuccess }: Contri
             Contribute to {campaign.tokenName}
           </DialogTitle>
           <DialogDescription className="text-gray-400">
-            Support this campaign by contributing SOL. Your contribution will help reach the ${campaign.targetAmount} goal.
+            Support this campaign by contributing SOL. Your contribution will help reach the ${campaign.targetAmount.toFixed(2)} goal.
           </DialogDescription>
         </DialogHeader>
 

@@ -286,10 +286,10 @@ export const EnhancedCampaignCard: React.FC<EnhancedCampaignCardProps> = ({
         <div className="space-y-3 mb-4">
           <div className="flex justify-between items-center">
             <span className="text-2xl font-bold text-white">
-              ${campaign.currentAmount.toFixed(0)}
+              ${campaign.currentAmount.toFixed(2)}
             </span>
             <span className="text-gray-400">
-              of ${campaign.targetAmount.toFixed(0)}
+              of ${campaign.targetAmount.toFixed(2)}
             </span>
           </div>
 
@@ -302,8 +302,8 @@ export const EnhancedCampaignCard: React.FC<EnhancedCampaignCardProps> = ({
 
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <div className="text-sm font-bold text-white">{campaign.contributorCount || 0}</div>
-              <div className="text-xs text-gray-500">Contributors</div>
+              <div className="text-sm font-bold text-white">{campaign.contributionCount || 0}</div>
+              <div className="text-xs text-gray-500">Contributions</div>
             </div>
             <div>
               <div className="text-sm font-bold text-purple-400">{metrics.progress.toFixed(0)}%</div>

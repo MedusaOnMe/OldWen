@@ -72,7 +72,7 @@ interface Campaign {
   createdAt: Date;
   deadline: Date;
   creatorAddress: string;
-  contributorCount: number;
+  contributionCount: number;
 }
 
 interface User {
@@ -892,8 +892,8 @@ export function AdminDashboard() {
                     </div>
                   </div>
                   <div>
-                    <Label>Contributors</Label>
-                    <div className="text-lg font-semibold">{selectedCampaign.contributorCount}</div>
+                    <Label>Contributions</Label>
+                    <div className="text-lg font-semibold">{selectedCampaign.contributionCount}</div>
                   </div>
                 </div>
                 <div className="flex gap-2">

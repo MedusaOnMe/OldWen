@@ -441,7 +441,7 @@ export class TransactionVerificationService {
    * Polling fallback for transaction monitoring
    */
   private startTransactionPolling(campaignId: string, publicKey: PublicKey): void {
-    const pollInterval = 30000; // 30 seconds
+    const pollInterval = 300000; // 5 minutes (webhooks are primary method)
 
     const poll = async () => {
       try {

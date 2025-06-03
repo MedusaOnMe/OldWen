@@ -112,20 +112,18 @@ router.get('/campaigns', async (req, res) => {
       snapshot.docs.map(async (doc) => {
         const campaignData = doc.data();
         
-        // Get contributor count
+        // Get contribution count
         const contributionsSnapshot = await db.collection(collections.contributions)
           .where('campaignId', '==', doc.id)
           .where('status', '==', 'confirmed')
           .get();
         
-        const uniqueContributors = new Set(
-          contributionsSnapshot.docs.map(contrib => contrib.data().contributorAddress)
-        ).size;
+        const totalContributions = contributionsSnapshot.size;
         
         return {
           id: doc.id,
           ...campaignData,
-          contributorCount: uniqueContributors
+          contributionCount: totalContributions
         };
       })
     );
