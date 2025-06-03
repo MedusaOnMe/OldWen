@@ -397,7 +397,7 @@ export class TransactionVerificationService {
         `https://api.helius.xyz/v0/webhooks?api-key=${HELIUS_API_KEY}`,
         {
           webhookURL: webhookUrl,
-          transactionTypes: ['TRANSFER'],
+          transactionTypes: ['TRANSFER', 'SWAP', 'Any'],
           accountAddresses: [walletAddress],
           webhookType: 'enhanced'
         }

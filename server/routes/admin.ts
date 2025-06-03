@@ -523,6 +523,72 @@ router.post('/platform/resume', async (req, res) => {
   }
 });
 
+// Fix webhook transaction types to use 'Any' instead of 'TRANSFER'
+router.post('/fix-webhook-types', async (req, res) => {
+  try {
+    const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
+    
+    if (!HELIUS_API_KEY) {
+      return res.status(500).json({ error: 'Missing Helius API key' });
+    }
+
+    // Get all existing webhooks
+    const webhooksResponse = await axios.get(
+      `https://api.helius.xyz/v0/webhooks?api-key=${HELIUS_API_KEY}`
+    );
+
+    const webhooks = webhooksResponse.data;
+    const results = [];
+
+    for (const webhook of webhooks) {
+      if (webhook.transactionTypes.includes('TRANSFER') && !webhook.transactionTypes.includes('Any')) {
+        try {
+          // Update the webhook to use 'Any' transaction types
+          await axios.put(
+            `https://api.helius.xyz/v0/webhooks/${webhook.webhookID}?api-key=${HELIUS_API_KEY}`,
+            {
+              webhookURL: webhook.webhookURL,
+              transactionTypes: ['Any'],
+              accountAddresses: webhook.accountAddresses,
+              webhookType: webhook.webhookType
+            }
+          );
+          
+          results.push({
+            webhookID: webhook.webhookID,
+            oldTypes: webhook.transactionTypes,
+            newTypes: ['Any'],
+            status: 'updated'
+          });
+        } catch (updateError) {
+          results.push({
+            webhookID: webhook.webhookID,
+            oldTypes: webhook.transactionTypes,
+            status: 'error',
+            error: updateError.message
+          });
+        }
+      } else {
+        results.push({
+          webhookID: webhook.webhookID,
+          transactionTypes: webhook.transactionTypes,
+          status: 'already_correct'
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      totalWebhooks: webhooks.length,
+      results
+    });
+
+  } catch (error) {
+    console.error('Fix webhook types error:', error);
+    res.status(500).json({ error: 'Failed to fix webhook types' });
+  }
+});
+
 // Update existing webhooks to use correct URL
 router.post('/update-webhooks', async (req, res) => {
   try {
