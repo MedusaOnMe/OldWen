@@ -91,23 +91,48 @@ export class HeliusWebhookService {
    * Verify webhook signature for security
    */
   private verifyWebhookSignature(req: Request): boolean {
-    if (!WEBHOOK_SECRET) {
-      console.warn('HELIUS_WEBHOOK_SECRET not configured - skipping signature verification');
-      return true; // Allow in development
+    // Skip verification in development only
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Development mode - skipping webhook signature verification');
+      return true;
     }
 
-    const signature = req.headers['x-helius-signature'] as string;
-    if (!signature) {
+    if (!WEBHOOK_SECRET) {
+      console.error('HELIUS_WEBHOOK_SECRET not configured in production!');
       return false;
     }
 
-    const body = JSON.stringify(req.body);
-    const expectedSignature = crypto
+    // Check for our custom webhook secret header first
+    const customSecret = req.headers['x-webhook-secret'] as string;
+    if (customSecret) {
+      const isValid = customSecret === WEBHOOK_SECRET;
+      if (!isValid) {
+        console.warn(`Custom webhook secret verification failed`);
+      }
+      return isValid;
+    }
+
+    // Fallback to Helius signature verification
+    const signature = req.headers['x-helius-signature'] as string;
+    if (!signature) {
+      console.warn('No x-helius-signature or x-webhook-secret header found');
+      return false;
+    }
+
+    // Helius sends signature as "sha256=hash"
+    const expectedSignature = 'sha256=' + crypto
       .createHmac('sha256', WEBHOOK_SECRET)
-      .update(body)
+      .update(JSON.stringify(req.body))
       .digest('hex');
 
-    return signature === expectedSignature;
+    const isValid = signature === expectedSignature;
+    if (!isValid) {
+      console.warn(`Webhook signature verification failed`);
+      console.warn(`Expected format: sha256=<hash>`);
+      console.warn(`Received: ${signature}`);
+    }
+    
+    return isValid;
   }
 
   /**

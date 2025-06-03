@@ -393,14 +393,26 @@ export class TransactionVerificationService {
         return;
       }
 
+      // Prepare webhook payload
+      const webhookPayload: any = {
+        webhookURL: webhookUrl,
+        transactionTypes: ['TRANSFER', 'SWAP', 'Any'],
+        accountAddresses: [walletAddress],
+        webhookType: 'enhanced'
+      };
+
+      // Add authentication header if webhook secret is configured
+      const webhookSecret = process.env.HELIUS_WEBHOOK_SECRET;
+      if (webhookSecret && webhookSecret !== 'dev_webhook_secret') {
+        webhookPayload.authHeader = `X-Webhook-Secret: ${webhookSecret}`;
+        console.log(`[Webhook Setup] Adding authentication header for security`);
+      } else {
+        console.log(`[Webhook Setup] No webhook secret configured - webhook will be unsecured`);
+      }
+
       const response = await axios.post(
         `https://api.helius.xyz/v0/webhooks?api-key=${HELIUS_API_KEY}`,
-        {
-          webhookURL: webhookUrl,
-          transactionTypes: ['TRANSFER', 'SWAP', 'Any'],
-          accountAddresses: [walletAddress],
-          webhookType: 'enhanced'
-        }
+        webhookPayload
       );
 
       console.log(`[Webhook Setup] Success! Webhook ID: ${response.data.webhookID}`);
