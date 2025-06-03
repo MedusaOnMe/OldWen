@@ -67,8 +67,23 @@ export default function Footer() {
           </div>
         </div>
 
+        {/* Legal Disclaimer */}
+        <div className="bg-gray-900/50 border border-gray-600/30 rounded-lg p-5 mt-12">
+          <div className="text-gray-300 text-sm space-y-2 leading-relaxed">
+            <h4 className="text-white font-semibold text-base mb-3">Platform Terms</h4>
+            
+            <p><strong>Service:</strong> Wendex operates as a crowdfunding platform facilitating community funding for DexScreener enhanced information services. We are an intermediary platform only.</p>
+            
+            <p><strong>Contributions:</strong> All contributions are final and non-refundable. We do not guarantee campaign success, service delivery, or token performance. Users participate voluntarily at their own risk.</p>
+            
+            <p><strong>Liability:</strong> Wendex disclaims liability for campaign outcomes, technical issues, or user losses. We do not provide financial advice.</p>
+            
+            <p><strong>Terms:</strong> Platform fees are non-refundable. By using this platform you agree to these terms.</p>
+          </div>
+        </div>
+
         {/* Bottom bar */}
-        <div className="border-t border-gray-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+        <div className="border-t border-gray-700 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">
             © 2024 Wendex. All rights reserved.
           </p>

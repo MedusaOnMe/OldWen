@@ -16,16 +16,16 @@ export class SchedulerService {
       }
     }, 5 * 60 * 1000); // 5 minutes
     
-    // Update campaign balances every 30 seconds
+    // Update campaign balances every 5 minutes (webhooks handle real-time, this is just backup)
     this.balanceMonitorInterval = setInterval(async () => {
       try {
         await this.updateCampaignBalances();
       } catch (error) {
         console.error('Scheduled balance update failed:', error);
       }
-    }, 30 * 1000); // 30 seconds
+    }, 5 * 60 * 1000); // 5 minutes
     
-    console.log('Scheduler service started (deadlines: 5min, balances: 30sec)');
+    console.log('Scheduler service started (deadlines: 5min, balances: 5min backup)');
   }
   
   stop() {

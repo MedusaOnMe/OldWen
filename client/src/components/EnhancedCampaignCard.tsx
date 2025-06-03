@@ -315,9 +315,15 @@ export const EnhancedCampaignCard: React.FC<EnhancedCampaignCardProps> = ({
                 metrics.urgency === 'medium' ? 'text-yellow-400' : 
                 'text-green-400'
               }`}>
-                {metrics.timeRemaining.split(' ')[0]}
+                {metrics.timeRemaining === 'Expired' ? 'Expired' : metrics.timeRemaining.split(' ')[0]}
               </div>
-              <div className="text-xs text-gray-500">Days Left</div>
+              <div className="text-xs text-gray-500">
+                {metrics.timeRemaining === 'Expired' ? '' : 
+                 metrics.timeRemaining.includes('hour') ? 'Hours Left' :
+                 metrics.timeRemaining.includes('minute') ? 'Minutes Left' :
+                 metrics.timeRemaining.includes('second') ? 'Seconds Left' :
+                 'Days Left'}
+              </div>
             </div>
           </div>
         </div>

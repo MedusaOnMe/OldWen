@@ -147,14 +147,12 @@ class HeliusService {
   private isProcessingQueue: boolean = false;
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_HELIUS_API_KEY || import.meta.env.HELIUS_API_KEY || '8349bc43-3182-420a-bade-44ea90bf1c53';
+    // Client-side should NOT use Helius API key directly
+    // All Helius operations should go through the server
+    this.apiKey = '';
     this.baseUrl = 'https://api.helius.xyz';
     
-    if (!this.apiKey) {
-      console.warn('Helius API key not configured. Token validation will use fallback methods.');
-    }
-    
-    console.log('Helius API key configured:', this.apiKey ? 'Yes' : 'No');
+    console.log('Client-side Helius service initialized - using server proxy for all operations');
   }
 
   /**
@@ -262,11 +260,7 @@ class HeliusService {
   async validateToken(contractAddress: string): Promise<TokenValidationResult> {
     console.log(`[Client Helius API] ========== START TOKEN VALIDATION ==========`);
     console.log(`[Client Helius API] Validating token: ${contractAddress}`);
-    console.log(`[Client Helius API] API Key configured:`, this.apiKey ? `${this.apiKey.substring(0, 8)}...` : 'NOT SET');
-    console.log(`[Client Helius API] Environment variables:`, {
-      VITE_HELIUS_API_KEY: import.meta.env.VITE_HELIUS_API_KEY ? 'SET' : 'NOT SET',
-      HELIUS_API_KEY: import.meta.env.HELIUS_API_KEY ? 'SET' : 'NOT SET'
-    });
+    console.log(`[Client Helius API] Using server proxy for all Helius operations`);
     
     try {
       // Basic address validation

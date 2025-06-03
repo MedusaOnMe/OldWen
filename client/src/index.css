@@ -1,6 +1,32 @@
 @import '@solana/wallet-adapter-react-ui/styles.css';
 @import './styles/dark-complex-theme.css';
 
+/* Fix wallet adapter modal z-index and pointer events */
+.wallet-adapter-modal-wrapper {
+  z-index: 9999 !important;
+}
+
+.wallet-adapter-modal-wrapper .wallet-adapter-modal {
+  z-index: 10000 !important;
+}
+
+.wallet-adapter-modal-list {
+  z-index: 10001 !important;
+}
+
+.wallet-adapter-modal-list-more {
+  z-index: 10001 !important;
+}
+
+.wallet-adapter-modal button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.wallet-adapter-modal-wrapper .wallet-adapter-modal-container {
+  pointer-events: auto !important;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

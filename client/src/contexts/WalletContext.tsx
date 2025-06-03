@@ -4,6 +4,8 @@ import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
+  TorusWalletAdapter,
+  LedgerWalletAdapter,
 } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
 
@@ -15,11 +17,10 @@ export const WalletContextProvider: FC<WalletContextProviderProps> = ({ children
   // Use mainnet for all environments
   const network = 'mainnet-beta';
   
-  // You can also provide a custom RPC endpoint
+  // Use Helius RPC endpoint for all wallet operations
   const endpoint = useMemo(() => {
-    const rpcEndpoint = import.meta.env.VITE_SOLANA_RPC_URL || 
-      import.meta.env.VITE_HELIUS_RPC_ENDPOINT || 
-      clusterApiUrl(network);
+    // Use the same Helius RPC that the server uses for consistency
+    const rpcEndpoint = 'https://mainnet.helius-rpc.com/?api-key=8e3b6efc-5c17-4baf-9eef-ec5ef39f02d5';
     
     console.log('[Wallet Context] Network:', network);
     console.log('[Wallet Context] RPC Endpoint:', rpcEndpoint);
@@ -31,6 +32,8 @@ export const WalletContextProvider: FC<WalletContextProviderProps> = ({ children
     () => [
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
+      new TorusWalletAdapter(),
+      new LedgerWalletAdapter(),
     ],
     []
   );

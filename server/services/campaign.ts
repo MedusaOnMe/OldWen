@@ -90,8 +90,40 @@ export class CampaignService {
     
     const snapshot = await query.limit(50).get();
     
+    // Get campaigns with contributor counts
+    const campaigns = await Promise.all(
+      snapshot.docs.map(async (doc) => {
+        const campaignData = doc.data();
+        
+        // Get unique contributor count (check both confirmed and pending)
+        const contributionsSnapshot = await db.collection(collections.contributions)
+          .where('campaignId', '==', doc.id)
+          .get();
+        
+        const contributions = contributionsSnapshot.docs.map(doc => doc.data());
+        console.log(`Campaign ${doc.id} has ${contributions.length} total contributions`);
+        
+        // Count unique contributors from confirmed contributions, but fall back to pending if no confirmed
+        const confirmedContributions = contributions.filter(c => c.status === 'confirmed');
+        const pendingContributions = contributions.filter(c => c.status === 'pending');
+        
+        // Use confirmed if available, otherwise use pending
+        const contributionsToCount = confirmedContributions.length > 0 ? confirmedContributions : pendingContributions;
+        const uniqueContributors = new Set(
+          contributionsToCount.map(contrib => contrib.contributorAddress)
+        ).size;
+        
+        console.log(`Campaign ${doc.id}: ${confirmedContributions.length} confirmed, ${pendingContributions.length} pending, ${uniqueContributors} unique contributors`);
+        
+        return {
+          id: doc.id,
+          ...campaignData,
+          contributorCount: uniqueContributors
+        } as Campaign;
+      })
+    );
+    
     // Sort in memory if needed
-    const campaigns = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Campaign));
     return campaigns.sort((a, b) => {
       const dateA = new Date(a.createdAt).getTime();
       const dateB = new Date(b.createdAt).getTime();
@@ -198,18 +230,23 @@ export class CampaignService {
       const contribution = contributionDoc.data() as Contribution;
       
       // Use transaction verification service
+      console.log(`Verifying transaction ${txHash} for contribution ${contributionId}`);
       const verification = await transactionVerificationService.verifyTransaction(
         txHash, 
         contribution.campaignId, 
         contribution.amount
       );
       
+      console.log(`Verification result for ${txHash}:`, verification);
+      
       if (verification.valid) {
+        console.log(`Transaction ${txHash} verified successfully`);
         await db.collection(collections.contributions).doc(contributionId).update({
           status: 'confirmed',
           verifiedAt: new Date()
         });
       } else {
+        console.log(`Transaction ${txHash} verification failed:`, verification.error);
         await db.collection(collections.contributions).doc(contributionId).update({
           status: 'failed',
           verificationError: verification.error

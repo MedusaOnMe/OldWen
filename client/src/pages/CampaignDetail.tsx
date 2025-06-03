@@ -5,6 +5,7 @@ import { Campaign, Contribution } from '../types/campaign';
 import { campaignAPI } from '../services/api';
 import { wsService } from '../services/websocket';
 import { ContributeModal } from '../components/ContributeModal';
+import { CampaignChat } from '../components/CampaignChat';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
@@ -13,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Clock, Copy, DollarSign, ExternalLink, Loader2, Users, Wallet } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
+import { formatDetailedTimeRemaining } from '../utils/timestamp';
 import { useToast } from '../hooks/use-toast';
 import { Layout } from '../components/Layout';
 
@@ -20,6 +22,7 @@ export function CampaignDetailPage() {
   const { id } = useParams();
   const { toast } = useToast();
   const [showContributeModal, setShowContributeModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'contributions' | 'chat'>('contributions');
 
   const { data: campaignData, isLoading, error, refetch } = useQuery({
     queryKey: ['campaign', id],
@@ -33,34 +36,35 @@ export function CampaignDetailPage() {
     enabled: !!id,
   });
 
-  useEffect(() => {
-    if (!id) return;
+  // Temporarily disabled WebSocket connection - using Helius webhooks instead
+  // useEffect(() => {
+  //   if (!id) return;
 
-    // Subscribe to campaign updates
-    wsService.subscribeToCampaign(id);
+  //   // Subscribe to campaign updates
+  //   wsService.subscribeToCampaign(id);
 
-    const handleCampaignUpdate = (campaign: Campaign) => {
-      if (campaign.id === id) {
-        refetch();
-      }
-    };
+  //   const handleCampaignUpdate = (campaign: Campaign) => {
+  //     if (campaign.id === id) {
+  //       refetch();
+  //     }
+  //   };
 
-    const handleNewContribution = (contribution: Contribution) => {
-      if (contribution.campaignId === id) {
-        refetchContributions();
-        refetch();
-      }
-    };
+  //   const handleNewContribution = (contribution: Contribution) => {
+  //     if (contribution.campaignId === id) {
+  //       refetchContributions();
+  //       refetch();
+  //     }
+  //   };
 
-    wsService.on('campaign_update', handleCampaignUpdate);
-    wsService.on('new_contribution', handleNewContribution);
+  //   wsService.on('campaign_update', handleCampaignUpdate);
+  //   wsService.on('new_contribution', handleNewContribution);
 
-    return () => {
-      wsService.unsubscribeFromCampaign(id);
-      wsService.off('campaign_update', handleCampaignUpdate);
-      wsService.off('new_contribution', handleNewContribution);
-    };
-  }, [id, refetch, refetchContributions]);
+  //   return () => {
+  //     wsService.unsubscribeFromCampaign(id);
+  //     wsService.off('campaign_update', handleCampaignUpdate);
+  //     wsService.off('new_contribution', handleNewContribution);
+  //   };
+  // }, [id, refetch, refetchContributions]);
 
   if (isLoading) {
     return (
@@ -86,9 +90,7 @@ export function CampaignDetailPage() {
   const campaign = campaignData.campaign;
   const contributions = contributionsData?.contributions || [];
   const progress = (campaign.currentAmount / campaign.targetAmount) * 100;
-  const timeLeft = new Date(campaign.deadline) > new Date() 
-    ? formatDistanceToNow(new Date(campaign.deadline), { addSuffix: true })
-    : 'Ended';
+  const timeLeft = formatDetailedTimeRemaining(campaign.deadline);
 
   const copyAddress = (address: string) => {
     navigator.clipboard.writeText(address);
@@ -169,7 +171,7 @@ export function CampaignDetailPage() {
                 <div className="space-y-2">
                   <p className="text-sm text-gray-500">Token Address</p>
                   <div className="flex items-center gap-2">
-                    <code className="text-sm bg-gray-800 px-3 py-2 rounded text-gray-300 flex-1">
+                    <code className="text-xs bg-gray-800 px-3 py-2 rounded text-gray-300 flex-1 font-mono break-all">
                       {campaign.tokenAddress || campaign.contractAddress || 'Unknown'}
                     </code>
                     <button 
@@ -219,22 +221,38 @@ export function CampaignDetailPage() {
           <div className="card-dark">
             <div className="border-b border-gray-800">
               <div className="flex space-x-8 px-6">
-                <button className="py-4 px-2 border-b-2 border-purple-500 text-purple-400 font-medium">
+                <button 
+                  className={`py-4 px-2 border-b-2 font-medium transition-colors ${
+                    activeTab === 'contributions' 
+                      ? 'border-purple-500 text-purple-400' 
+                      : 'border-transparent text-gray-400 hover:text-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('contributions')}
+                >
                   Contributions
                 </button>
-                <button className="py-4 px-2 text-gray-400 hover:text-gray-300">
+                <button 
+                  className={`py-4 px-2 border-b-2 font-medium transition-colors ${
+                    activeTab === 'chat' 
+                      ? 'border-purple-500 text-purple-400' 
+                      : 'border-transparent text-gray-400 hover:text-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('chat')}
+                >
                   Chat
                 </button>
               </div>
             </div>
             
             <div className="p-6">
-              <div className="mb-6">
-                <h3 className="text-xl font-bold text-white mb-2">Recent Contributors</h3>
-                <p className="text-gray-400">
-                  {contributions.length} total contributions
-                </p>
-              </div>
+              {activeTab === 'contributions' ? (
+                <>
+                  <div className="mb-6">
+                    <h3 className="text-xl font-bold text-white mb-2">Recent Contributors</h3>
+                    <p className="text-gray-400">
+                      {contributions.length} total contributions
+                    </p>
+                  </div>
                   {contributions.length > 0 ? (
                     <div className="space-y-4">
                         {contributions.map((contribution) => (
@@ -271,6 +289,10 @@ export function CampaignDetailPage() {
                       </p>
                     </div>
                   )}
+                </>
+              ) : (
+                <CampaignChat campaignId={id!} />
+              )}
             </div>
           </div>
         </div>
@@ -314,15 +336,15 @@ export function CampaignDetailPage() {
                 <div className="text-center">
                   <div className="flex items-center justify-center mb-2">
                     <Clock className="h-5 w-5 mr-2 text-purple-400" />
-                    <span className="text-xl font-bold text-white">{timeLeft}</span>
                   </div>
+                  <div className="text-lg font-bold text-white mb-1">{timeLeft}</div>
                   <p className="text-sm text-gray-400">Time left</p>
                 </div>
               </div>
 
               {campaign.status === 'active' && (
                 <button 
-                  className="w-full btn-dark-primary mt-6"
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center mt-6"
                   onClick={() => setShowContributeModal(true)}
                 >
                   <DollarSign className="mr-2 h-5 w-5" />
@@ -330,29 +352,6 @@ export function CampaignDetailPage() {
                 </button>
               )}
 
-              <div className="space-y-4 pt-6 border-t border-gray-800 mt-6 bg-gray-800/30 -mx-6 px-6 pb-6">
-                <p className="text-lg font-bold text-white">Campaign Wallet</p>
-                <div className="flex items-center gap-3">
-                  <code className="text-sm bg-gray-800 p-4 rounded-lg flex-1 text-gray-300 font-mono break-all">
-                    {campaign.walletAddress}
-                  </code>
-                  <button 
-                    className="text-gray-400 hover:text-white transition-colors p-3 bg-gray-700 hover:bg-gray-600 rounded-lg"
-                    onClick={() => copyAddress(campaign.walletAddress)}
-                  >
-                    <Copy className="h-5 w-5" />
-                  </button>
-                </div>
-                <a
-                  href={`https://solscan.io/account/${campaign.walletAddress}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-base text-blue-400 hover:text-blue-300 transition-colors font-medium"
-                >
-                  View Wallet on Solscan
-                  <ExternalLink className="h-5 w-5" />
-                </a>
-              </div>
             </div>
           </div>
 

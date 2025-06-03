@@ -28,14 +28,15 @@ function Router() {
 }
 
 function App() {
-  useEffect(() => {
-    // Connect to WebSocket on app start
-    wsService.connect();
+  // Temporarily disabled WebSocket - using Helius webhooks for real-time updates
+  // useEffect(() => {
+  //   // Connect to WebSocket on app start
+  //   wsService.connect();
     
-    return () => {
-      wsService.disconnect();
-    };
-  }, []);
+  //   return () => {
+  //     wsService.disconnect();
+  //   };
+  // }, []);
 
   return (
     <ErrorBoundary>

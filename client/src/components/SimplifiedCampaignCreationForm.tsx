@@ -9,7 +9,8 @@ import {
   Upload,
   Shield,
   Link2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Clock
 } from 'lucide-react';
 
 import { useToast } from '../hooks/use-toast';

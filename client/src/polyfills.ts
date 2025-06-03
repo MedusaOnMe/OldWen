@@ -11,4 +11,18 @@ import { Buffer } from 'buffer';
   nextTick: (fn: Function) => Promise.resolve().then(() => fn())
 };
 
+// Crypto polyfill for browser
+try {
+  (globalThis as any).crypto = globalThis.crypto || window.crypto;
+} catch (e) {
+  // Fallback for environments without crypto
+}
+
+// Stream polyfill for browser (minimal implementation)
+(globalThis as any).stream = {
+  Readable: class Readable {},
+  Writable: class Writable {},
+  Transform: class Transform {}
+};
+
 export {};

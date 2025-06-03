@@ -28,7 +28,9 @@
       "Bash(__NEW_LINE__ echo -e \"\\n=== TEST 2.2: Client-Side Private Key Operations Search ===\")",
       "Bash(__NEW_LINE__ echo -e \"\\n=== TEST 2.3: Wallet Service References ===\")",
       "Bash(__NEW_LINE__ echo -e \"\\n=== TEST 6.2: Contribution Flow Security ===\")",
-      "Bash(__NEW_LINE__ echo -e \"\\n=== TEST 6.3: Private Key Exposure Check ===\")"
+      "Bash(__NEW_LINE__ echo -e \"\\n=== TEST 6.3: Private Key Exposure Check ===\")",
+      "Bash(brew install:*)",
+      "Bash(lt:*)"
     ],
     "deny": []
   }

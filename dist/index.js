@@ -247,12 +247,15 @@ var init_solana = __esm({
       throw new Error("WALLET_ENCRYPTION_KEY must be set to a secure 32-byte hex string");
     }
     getRpcEndpoint = () => {
-      console.log("HELIUS_API_KEY value:", HELIUS_API_KEY);
       if (HELIUS_API_KEY && HELIUS_API_KEY !== "dev_key_placeholder") {
-        console.log("Using Helius RPC:", HELIUS_RPC_ENDPOINT);
+        if (process.env.NODE_ENV === "development") {
+          console.log("Helius connection initialized");
+        }
         return HELIUS_RPC_ENDPOINT;
       } else {
-        console.log("HELIUS_API_KEY not configured - using fallback RPC:", FALLBACK_RPC);
+        if (process.env.NODE_ENV === "development") {
+          console.log("Using fallback RPC connection");
+        }
         return FALLBACK_RPC;
       }
     };
@@ -3059,8 +3062,9 @@ async function validateToken(req, res) {
     }
     const HELIUS_API_KEY4 = process.env.HELIUS_API_KEY;
     console.log("[Server Helius API] Environment check:");
-    console.log("[Server Helius API] - HELIUS_API_KEY available:", !!HELIUS_API_KEY4);
-    console.log("[Server Helius API] - HELIUS_API_KEY value:", HELIUS_API_KEY4 ? `${HELIUS_API_KEY4.substring(0, 8)}...` : "NOT SET");
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Server Helius API] - API key configured:", !!HELIUS_API_KEY4);
+    }
     console.log(`[Server Helius API] Validating token: ${contractAddress}`);
     if (!HELIUS_API_KEY4) {
       console.log("[Server Helius API] ERROR: No Helius API key configured");
@@ -3292,8 +3296,8 @@ var SchedulerService = class {
       } catch (error) {
         console.error("Scheduled balance update failed:", error);
       }
-    }, 30 * 1e3);
-    console.log("Scheduler service started (deadlines: 5min, balances: 30sec)");
+    }, 5 * 60 * 1e3);
+    console.log("Scheduler service started (deadlines: 5min, balances: 5min backup)");
   }
   stop() {
     if (this.deadlineCheckInterval) {
@@ -3391,8 +3395,7 @@ var vite_config_default = defineConfig({
   },
   define: {
     global: "globalThis",
-    "process.env": "import.meta.env",
-    "import.meta.env.VITE_HELIUS_API_KEY": JSON.stringify(process.env.HELIUS_API_KEY)
+    "process.env": "import.meta.env"
   },
   root: path.resolve(import.meta.dirname, "client"),
   build: {
@@ -3479,9 +3482,9 @@ import cors from "cors";
 dotenv2.config();
 console.log("[Server Startup] Environment variables loaded:");
 console.log("[Server Startup] - NODE_ENV:", process.env.NODE_ENV);
-console.log("[Server Startup] - HELIUS_API_KEY:", process.env.HELIUS_API_KEY ? `${process.env.HELIUS_API_KEY.substring(0, 8)}...` : "NOT SET");
-console.log("[Server Startup] - VITE_HELIUS_API_KEY:", process.env.VITE_HELIUS_API_KEY ? `${process.env.VITE_HELIUS_API_KEY.substring(0, 8)}...` : "NOT SET");
-console.log("[Server Startup] - HELIUS_RPC_ENDPOINT:", process.env.HELIUS_RPC_ENDPOINT || "NOT SET");
+if (process.env.NODE_ENV === "development") {
+  console.log("[Server Startup] - Helius integration configured");
+}
 var app2 = express2();
 app2.use(helmet({
   contentSecurityPolicy: {
