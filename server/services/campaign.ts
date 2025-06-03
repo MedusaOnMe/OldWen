@@ -250,6 +250,18 @@ export class CampaignService {
           status: 'confirmed',
           verifiedAt: new Date()
         });
+        
+        // Update campaign balance with the verified amount (convert SOL to USD)
+        console.log(`Updating campaign ${contribution.campaignId} balance with ${verification.amount} SOL`);
+        const campaign = await this.getCampaign(contribution.campaignId);
+        if (campaign) {
+          // Convert SOL to USD (approximate: 1 SOL = $156)
+          const solToUsdRate = 156; // You might want to fetch this from an API
+          const usdAmount = verification.amount * solToUsdRate;
+          const newAmount = (campaign.currentAmount || 0) + usdAmount;
+          await this.updateCampaignAmount(contribution.campaignId, newAmount);
+          console.log(`Campaign ${contribution.campaignId} balance updated: +${verification.amount} SOL (~$${usdAmount.toFixed(2)}) = $${newAmount.toFixed(2)} total`);
+        }
       } else {
         console.log(`Transaction ${txHash} verification failed:`, verification.error);
         await db.collection(collections.contributions).doc(contributionId).update({

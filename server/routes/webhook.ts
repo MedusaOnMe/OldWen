@@ -5,6 +5,14 @@ const router = Router();
 
 // Helius webhook endpoint
 router.post('/helius-webhook', async (req, res) => {
+  console.log('🚀 WEBHOOK RECEIVED!');
+  console.log('Headers:', req.headers);
+  console.log('Body type:', typeof req.body);
+  console.log('Body length:', Array.isArray(req.body) ? req.body.length : 'not array');
+  if (Array.isArray(req.body) && req.body.length > 0) {
+    console.log('First transaction:', req.body[0]);
+  }
+  
   await heliusWebhookService.processWebhook(req, res);
 });
 

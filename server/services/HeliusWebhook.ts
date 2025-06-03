@@ -235,8 +235,10 @@ export class HeliusWebhookService {
       // Record the contribution
       await this.recordSOLContribution(transaction, transfer, campaignId, verification);
 
-      // Update campaign balance (convert SOL to USD equivalent if needed)
-      await this.updateCampaignBalance(campaignId, amount);
+      // Update campaign balance (convert SOL to USD equivalent)
+      const solToUsdRate = 156; // Approximate rate
+      const usdAmount = amount * solToUsdRate;
+      await this.updateCampaignBalance(campaignId, usdAmount);
 
       // Send real-time updates
       this.broadcastUpdate(campaignId, {
@@ -433,6 +435,8 @@ export class HeliusWebhookService {
         currentAmount: newBalance,
         updatedAt: new Date()
       });
+
+      console.log(`Campaign ${campaignId} balance updated: +$${contributionAmount.toFixed(2)} = $${newBalance.toFixed(2)} total`);
 
       // Check if target reached and trigger purchase if needed
       if (newBalance >= campaignData.targetAmount && campaignData.status === 'active') {
