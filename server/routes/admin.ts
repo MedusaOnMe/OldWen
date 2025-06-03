@@ -522,6 +522,59 @@ router.post('/platform/resume', async (req, res) => {
   }
 });
 
+// Setup webhooks for all active campaigns
+router.post('/setup-webhooks', async (req, res) => {
+  try {
+    // Get all active campaigns
+    const campaignsSnapshot = await db.collection(collections.campaigns)
+      .where('status', '==', 'active')
+      .get();
+
+    const results = [];
+    for (const campaignDoc of campaignsSnapshot.docs) {
+      const campaignData = campaignDoc.data();
+      if (campaignData.walletAddress) {
+        try {
+          await transactionVerificationService.monitorCampaignWallet(
+            campaignDoc.id, 
+            campaignData.walletAddress
+          );
+          results.push({
+            campaignId: campaignDoc.id,
+            walletAddress: campaignData.walletAddress,
+            status: 'success'
+          });
+        } catch (error) {
+          results.push({
+            campaignId: campaignDoc.id,
+            walletAddress: campaignData.walletAddress,
+            status: 'error',
+            error: error.message
+          });
+        }
+      }
+    }
+
+    // Log admin action
+    await db.collection('admin_actions').add({
+      type: 'webhooks_setup',
+      campaignsProcessed: results.length,
+      timestamp: new Date(),
+      adminAction: true
+    });
+
+    res.json({
+      success: true,
+      campaignsProcessed: results.length,
+      results
+    });
+
+  } catch (error) {
+    console.error('Setup webhooks error:', error);
+    res.status(500).json({ error: 'Failed to setup webhooks' });
+  }
+});
+
 // Data Export
 router.get('/export/:type', async (req, res) => {
   try {
