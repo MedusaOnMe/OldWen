@@ -67,20 +67,18 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Important Disclaimer */}
-        <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg p-6 mt-12">
-          <div className="flex items-start space-x-3">
-            <div className="text-amber-400 mt-1">⚠️</div>
-            <div>
-              <h4 className="text-amber-400 font-semibold text-base mb-3">Important Information</h4>
-              <div className="text-gray-300 text-sm space-y-2 leading-relaxed">
-                <p>• All contributions are final and non-refundable</p>
-                <p>• No refunds are issued if campaigns do not reach their target goal</p>
-                <p>• No credits are issued if tokens fail to graduate from Pump.fun</p>
-                <p>• Only use official contribute buttons - direct wallet transfers are not supported</p>
-                <p>• No guarantees of token performance or campaign success</p>
-              </div>
-            </div>
+        {/* Legal Disclaimer */}
+        <div className="bg-gray-900/50 border border-gray-600/30 rounded-lg p-5 mt-12">
+          <div className="text-gray-300 text-sm space-y-2 leading-relaxed">
+            <h4 className="text-white font-semibold text-base mb-3">Platform Terms</h4>
+            
+            <p><strong>Service:</strong> Wendex operates as a crowdfunding platform facilitating community funding for DexScreener enhanced information services. We are an intermediary platform only.</p>
+            
+            <p><strong>Contributions:</strong> All contributions are final and non-refundable. We do not guarantee campaign success, service delivery, or token performance. Users participate voluntarily at their own risk.</p>
+            
+            <p><strong>Liability:</strong> Wendex disclaims liability for campaign outcomes, technical issues, or user losses. We do not provide financial advice.</p>
+            
+            <p><strong>Terms:</strong> Platform fees are non-refundable. By using this platform you agree to these terms.</p>
           </div>
         </div>
 

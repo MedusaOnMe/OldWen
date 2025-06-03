@@ -178,6 +178,50 @@ export function formatTimeRemaining(deadline: TimestampInput): string {
 }
 
 /**
+ * Formats time remaining with detailed breakdown (hours and minutes)
+ */
+export function formatDetailedTimeRemaining(deadline: TimestampInput): string {
+  try {
+    const deadlineDate = safeTimestampToDate(deadline);
+    const now = new Date();
+    const diffMs = deadlineDate.getTime() - now.getTime();
+
+    if (diffMs <= 0) {
+      return 'Expired';
+    }
+
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    const remainingHours = diffHours % 24;
+    const remainingMinutes = diffMinutes % 60;
+
+    if (diffDays > 0) {
+      if (remainingHours > 0) {
+        return `${diffDays} day${diffDays === 1 ? '' : 's'}, ${remainingHours} hour${remainingHours === 1 ? '' : 's'}`;
+      } else {
+        return `${diffDays} day${diffDays === 1 ? '' : 's'}`;
+      }
+    } else if (diffHours > 0) {
+      if (remainingMinutes > 0) {
+        return `${diffHours} hour${diffHours === 1 ? '' : 's'}, ${remainingMinutes} minute${remainingMinutes === 1 ? '' : 's'}`;
+      } else {
+        return `${diffHours} hour${diffHours === 1 ? '' : 's'}`;
+      }
+    } else if (diffMinutes > 0) {
+      return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'}`;
+    } else {
+      return `${diffSeconds} second${diffSeconds === 1 ? '' : 's'}`;
+    }
+  } catch (error) {
+    console.warn('Detailed time remaining calculation error:', error);
+    return 'Unknown';
+  }
+}
+
+/**
  * Safely converts timestamp to ISO string
  */
 export function toISOString(timestamp: TimestampInput): string {
