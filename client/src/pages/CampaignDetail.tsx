@@ -36,34 +36,35 @@ export function CampaignDetailPage() {
     enabled: !!id,
   });
 
-  useEffect(() => {
-    if (!id) return;
+  // Temporarily disabled WebSocket connection - using Helius webhooks instead
+  // useEffect(() => {
+  //   if (!id) return;
 
-    // Subscribe to campaign updates
-    wsService.subscribeToCampaign(id);
+  //   // Subscribe to campaign updates
+  //   wsService.subscribeToCampaign(id);
 
-    const handleCampaignUpdate = (campaign: Campaign) => {
-      if (campaign.id === id) {
-        refetch();
-      }
-    };
+  //   const handleCampaignUpdate = (campaign: Campaign) => {
+  //     if (campaign.id === id) {
+  //       refetch();
+  //     }
+  //   };
 
-    const handleNewContribution = (contribution: Contribution) => {
-      if (contribution.campaignId === id) {
-        refetchContributions();
-        refetch();
-      }
-    };
+  //   const handleNewContribution = (contribution: Contribution) => {
+  //     if (contribution.campaignId === id) {
+  //       refetchContributions();
+  //       refetch();
+  //     }
+  //   };
 
-    wsService.on('campaign_update', handleCampaignUpdate);
-    wsService.on('new_contribution', handleNewContribution);
+  //   wsService.on('campaign_update', handleCampaignUpdate);
+  //   wsService.on('new_contribution', handleNewContribution);
 
-    return () => {
-      wsService.unsubscribeFromCampaign(id);
-      wsService.off('campaign_update', handleCampaignUpdate);
-      wsService.off('new_contribution', handleNewContribution);
-    };
-  }, [id, refetch, refetchContributions]);
+  //   return () => {
+  //     wsService.unsubscribeFromCampaign(id);
+  //     wsService.off('campaign_update', handleCampaignUpdate);
+  //     wsService.off('new_contribution', handleNewContribution);
+  //   };
+  // }, [id, refetch, refetchContributions]);
 
   if (isLoading) {
     return (

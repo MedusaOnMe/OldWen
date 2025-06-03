@@ -21,6 +21,7 @@ export interface Campaign {
   updatedAt: Date;
   completedAt?: Date;
   serviceDetails?: any;
+  contributorCount?: number;
 }
 
 export interface Contribution {

@@ -212,9 +212,92 @@ export class TransactionVerificationService {
       return { valid: false, error: 'Transaction failed or has no metadata' };
     }
 
+    // First try to verify SOL transfers (native balance changes)
+    const solResult = this.verifySOLTransfer(transaction, campaignWalletAddress, expectedAmount);
+    if (solResult.valid) {
+      return solResult;
+    }
+
+    // Fallback to USDC verification for backward compatibility
+    const usdcResult = this.verifyUSDCTransfer(transaction, campaignWalletAddress, expectedAmount);
+    if (usdcResult.valid) {
+      return usdcResult;
+    }
+
+    return { 
+      valid: false, 
+      error: `No valid SOL or USDC transfer found. SOL error: ${solResult.error}, USDC error: ${usdcResult.error}` 
+    };
+  }
+
+  private verifySOLTransfer(
+    transaction: ParsedTransactionWithMeta, 
+    campaignWalletAddress: string, 
+    expectedAmount?: number
+  ): { valid: boolean; amount?: number; fromAddress?: string; toAddress?: string; error?: string } {
+    
+    if (!transaction.meta || transaction.meta.err) {
+      return { valid: false, error: 'Transaction failed or has no metadata' };
+    }
+
+    // Check native balance changes (SOL transfers)
+    const preBalances = transaction.meta.preBalances || [];
+    const postBalances = transaction.meta.postBalances || [];
+    const accountKeys = transaction.transaction.message.accountKeys.map(key => 
+      typeof key === 'string' ? key : key.pubkey.toBase58()
+    );
+
+    // Find campaign wallet in account keys
+    const campaignWalletIndex = accountKeys.findIndex(key => key === campaignWalletAddress);
+    
+    if (campaignWalletIndex === -1) {
+      return { valid: false, error: 'Campaign wallet not found in transaction' };
+    }
+
+    const preBalance = preBalances[campaignWalletIndex] || 0;
+    const postBalance = postBalances[campaignWalletIndex] || 0;
+    const balanceChange = (postBalance - preBalance) / 1e9; // Convert lamports to SOL
+
+    if (balanceChange <= 0) {
+      return { valid: false, error: `No positive SOL transfer detected. Balance change: ${balanceChange}` };
+    }
+
+    // Validate expected amount if provided (with small tolerance for fees)
+    if (expectedAmount && Math.abs(balanceChange - expectedAmount) > 0.001) {
+      return { 
+        valid: false, 
+        error: `SOL amount mismatch: expected ${expectedAmount}, got ${balanceChange}` 
+      };
+    }
+
+    // Find sender address (first account that had balance decrease)
+    let fromAddress = '';
+    for (let i = 0; i < accountKeys.length; i++) {
+      const pre = preBalances[i] || 0;
+      const post = postBalances[i] || 0;
+      if (pre > post && i !== campaignWalletIndex) {
+        fromAddress = accountKeys[i];
+        break;
+      }
+    }
+
+    return {
+      valid: true,
+      amount: balanceChange,
+      fromAddress,
+      toAddress: campaignWalletAddress
+    };
+  }
+
+  private verifyUSDCTransfer(
+    transaction: ParsedTransactionWithMeta, 
+    campaignWalletAddress: string, 
+    expectedAmount?: number
+  ): { valid: boolean; amount?: number; fromAddress?: string; toAddress?: string; error?: string } {
+
     // Parse token balance changes
-    const preTokenBalances = transaction.meta.preTokenBalances || [];
-    const postTokenBalances = transaction.meta.postTokenBalances || [];
+    const preTokenBalances = transaction.meta?.preTokenBalances || [];
+    const postTokenBalances = transaction.meta?.postTokenBalances || [];
 
     // Find USDC balance changes for campaign wallet
     const campaignTokenChanges = postTokenBalances.filter(balance => 
@@ -245,7 +328,7 @@ export class TransactionVerificationService {
     if (expectedAmount && Math.abs(amount - expectedAmount) > 0.01) {
       return { 
         valid: false, 
-        error: `Amount mismatch: expected ${expectedAmount}, got ${amount}` 
+        error: `USDC amount mismatch: expected ${expectedAmount}, got ${amount}` 
       };
     }
 

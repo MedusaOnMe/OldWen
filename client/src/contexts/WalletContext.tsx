@@ -17,11 +17,10 @@ export const WalletContextProvider: FC<WalletContextProviderProps> = ({ children
   // Use mainnet for all environments
   const network = 'mainnet-beta';
   
-  // Use a higher-performance public RPC endpoint  
+  // Use Helius RPC endpoint for all wallet operations
   const endpoint = useMemo(() => {
-    // Use a faster public RPC endpoint for better transaction performance
-    // Since webhooks handle the heavy lifting, this is just for wallet operations
-    const rpcEndpoint = 'https://solana-api.projectserum.com';
+    // Use the same Helius RPC that the server uses for consistency
+    const rpcEndpoint = 'https://mainnet.helius-rpc.com/?api-key=8e3b6efc-5c17-4baf-9eef-ec5ef39f02d5';
     
     console.log('[Wallet Context] Network:', network);
     console.log('[Wallet Context] RPC Endpoint:', rpcEndpoint);
