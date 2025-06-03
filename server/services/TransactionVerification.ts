@@ -407,6 +407,21 @@ export class TransactionVerificationService {
       console.log(`[Webhook Setup] Response:`, response.data);
     } catch (error) {
       console.error('Failed to set up Helius webhook:', error);
+      if (error.response) {
+        console.error('[Webhook Setup] Response status:', error.response.status);
+        console.error('[Webhook Setup] Response data:', error.response.data);
+        console.error('[Webhook Setup] Response headers:', error.response.headers);
+      }
+      console.error('[Webhook Setup] Request config:', {
+        url: `https://api.helius.xyz/v0/webhooks?api-key=${HELIUS_API_KEY}`,
+        method: 'POST',
+        data: {
+          webhookURL: webhookUrl,
+          transactionTypes: ['TRANSFER'],
+          accountAddresses: [walletAddress],
+          webhookType: 'enhanced'
+        }
+      });
     }
   }
 
