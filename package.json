@@ -12,6 +12,7 @@
     "decrypt-wallet": "tsx scripts/decrypt-wallet.ts"
   },
   "dependencies": {
+    "@firebase/auth": "^1.10.6",
     "@google-cloud/firestore": "^7.11.1",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
