@@ -48,6 +48,9 @@ export class TransactionVerificationService {
   constructor() {
     // Load previously processed transactions on startup
     this.loadProcessedTransactions();
+    
+    // Debug connection
+    console.log('Transaction verification service using connection:', connection.rpcEndpoint);
   }
 
   /**
