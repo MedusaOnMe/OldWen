@@ -45,8 +45,9 @@ export async function validateToken(req: Request, res: Response) {
     const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
     
     console.log('[Server Helius API] Environment check:');
-    console.log('[Server Helius API] - HELIUS_API_KEY available:', !!HELIUS_API_KEY);
-    console.log('[Server Helius API] - HELIUS_API_KEY value:', HELIUS_API_KEY ? `${HELIUS_API_KEY.substring(0, 8)}...` : 'NOT SET');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Server Helius API] - API key configured:', !!HELIUS_API_KEY);
+    }
     console.log(`[Server Helius API] Validating token: ${contractAddress}`);
     
     if (!HELIUS_API_KEY) {

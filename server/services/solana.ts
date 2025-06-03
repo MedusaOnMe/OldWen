@@ -18,12 +18,15 @@ if (!ENCRYPTION_KEY || ENCRYPTION_KEY === 'development_encryption_key_32_chars')
 
 // Determine which RPC to use
 const getRpcEndpoint = () => {
-  console.log('HELIUS_API_KEY value:', HELIUS_API_KEY);
   if (HELIUS_API_KEY && HELIUS_API_KEY !== 'dev_key_placeholder') {
-    console.log('Using Helius RPC:', HELIUS_RPC_ENDPOINT);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Helius connection initialized');
+    }
     return HELIUS_RPC_ENDPOINT;
   } else {
-    console.log('HELIUS_API_KEY not configured - using fallback RPC:', FALLBACK_RPC);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Using fallback RPC connection');
+    }
     return FALLBACK_RPC;
   }
 };

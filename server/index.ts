@@ -12,9 +12,9 @@ dotenv.config();
 // Log environment variables for debugging
 console.log('[Server Startup] Environment variables loaded:');
 console.log('[Server Startup] - NODE_ENV:', process.env.NODE_ENV);
-console.log('[Server Startup] - HELIUS_API_KEY:', process.env.HELIUS_API_KEY ? `${process.env.HELIUS_API_KEY.substring(0, 8)}...` : 'NOT SET');
-console.log('[Server Startup] - VITE_HELIUS_API_KEY:', process.env.VITE_HELIUS_API_KEY ? `${process.env.VITE_HELIUS_API_KEY.substring(0, 8)}...` : 'NOT SET');
-console.log('[Server Startup] - HELIUS_RPC_ENDPOINT:', process.env.HELIUS_RPC_ENDPOINT || 'NOT SET');
+if (process.env.NODE_ENV === 'development') {
+  console.log('[Server Startup] - Helius integration configured');
+}
 
 const app = express();
 

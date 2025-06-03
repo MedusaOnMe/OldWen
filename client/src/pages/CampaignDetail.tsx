@@ -330,29 +330,6 @@ export function CampaignDetailPage() {
                 </button>
               )}
 
-              <div className="space-y-4 pt-6 border-t border-gray-800 mt-6 bg-gray-800/30 -mx-6 px-6 pb-6">
-                <p className="text-lg font-bold text-white">Campaign Wallet</p>
-                <div className="flex items-center gap-3">
-                  <code className="text-sm bg-gray-800 p-4 rounded-lg flex-1 text-gray-300 font-mono break-all">
-                    {campaign.walletAddress}
-                  </code>
-                  <button 
-                    className="text-gray-400 hover:text-white transition-colors p-3 bg-gray-700 hover:bg-gray-600 rounded-lg"
-                    onClick={() => copyAddress(campaign.walletAddress)}
-                  >
-                    <Copy className="h-5 w-5" />
-                  </button>
-                </div>
-                <a
-                  href={`https://solscan.io/account/${campaign.walletAddress}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-base text-blue-400 hover:text-blue-300 transition-colors font-medium"
-                >
-                  View Wallet on Solscan
-                  <ExternalLink className="h-5 w-5" />
-                </a>
-              </div>
             </div>
           </div>
 

@@ -4,6 +4,8 @@ import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
+  TorusWalletAdapter,
+  LedgerWalletAdapter,
 } from '@solana/wallet-adapter-wallets';
 import { clusterApiUrl } from '@solana/web3.js';
 
@@ -15,11 +17,11 @@ export const WalletContextProvider: FC<WalletContextProviderProps> = ({ children
   // Use mainnet for all environments
   const network = 'mainnet-beta';
   
-  // You can also provide a custom RPC endpoint
+  // Use a higher-performance public RPC endpoint  
   const endpoint = useMemo(() => {
-    const rpcEndpoint = import.meta.env.VITE_SOLANA_RPC_URL || 
-      import.meta.env.VITE_HELIUS_RPC_ENDPOINT || 
-      clusterApiUrl(network);
+    // Use a faster public RPC endpoint for better transaction performance
+    // Since webhooks handle the heavy lifting, this is just for wallet operations
+    const rpcEndpoint = 'https://solana-api.projectserum.com';
     
     console.log('[Wallet Context] Network:', network);
     console.log('[Wallet Context] RPC Endpoint:', rpcEndpoint);
@@ -31,6 +33,8 @@ export const WalletContextProvider: FC<WalletContextProviderProps> = ({ children
     () => [
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
+      new TorusWalletAdapter(),
+      new LedgerWalletAdapter(),
     ],
     []
   );

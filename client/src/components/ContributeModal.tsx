@@ -7,7 +7,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
-import { Copy, Loader2, Wallet } from 'lucide-react';
+import { Copy, Loader2, Wallet, AlertTriangle, AlertCircle } from 'lucide-react';
 import { Campaign } from '../types/campaign';
 import { campaignAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
@@ -28,10 +28,16 @@ export function ContributeModal({ campaign, isOpen, onClose, onSuccess }: Contri
   const [amount, setAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
 
   const handleContribute = async () => {
     if (!publicKey) {
       setError('Please connect your wallet first');
+      return;
+    }
+
+    if (!disclaimerAccepted) {
+      setError('Please accept the terms before contributing');
       return;
     }
 
@@ -201,27 +207,52 @@ export function ContributeModal({ campaign, isOpen, onClose, onSuccess }: Contri
               step="0.01"
               className="input-dark"
             />
-            <p className="text-sm text-gray-500">Minimum contribution: 0.01 SOL</p>
+            <div className="space-y-1 text-sm">
+              <p className="text-gray-500">Minimum contribution: 0.01 SOL</p>
+              {amount && parseFloat(amount) > 0 && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                  <div className="text-blue-400 font-medium mb-1">Fee Breakdown:</div>
+                  <div className="text-gray-300 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Your contribution:</span>
+                      <span>{parseFloat(amount).toFixed(4)} SOL</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Platform fee (5%):</span>
+                      <span>{(parseFloat(amount) * 0.05).toFixed(4)} SOL</span>
+                    </div>
+                    <div className="flex justify-between border-t border-blue-500/30 pt-1 font-semibold">
+                      <span>Total to campaign:</span>
+                      <span>{(parseFloat(amount) * 0.95).toFixed(4)} SOL</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
+          {/* DISCLAIMER SECTION */}
           <div className="space-y-3">
-            <Label className="text-gray-300 font-medium">Campaign Wallet Address</Label>
-            <div className="flex items-center gap-2">
-              <code className="text-xs bg-gray-800 p-3 rounded-lg flex-1 overflow-hidden text-ellipsis text-gray-300 font-mono">
-                {campaign.walletAddress}
-              </code>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={copyAddress}
-                className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white"
-              >
-                <Copy className="h-3 w-3" />
-              </Button>
+            <div className="card-dark p-4 border border-amber-500/30 bg-amber-500/10">
+              <div className="text-sm text-amber-200 leading-relaxed space-y-2">
+                <p className="font-semibold">• No refunds are issued if the campaign does not reach its target goal</p>
+                <p className="font-semibold">• No credits are issued if the token fails to graduate from Pump.fun</p>
+                <p className="font-semibold">• No guarantees of token performance or campaign success</p>
+              </div>
             </div>
-            <p className="text-xs text-gray-500">
-              You can also send SOL directly to this address
-            </p>
+
+            <div className="flex items-start space-x-3 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+              <input
+                type="checkbox"
+                id="disclaimer-accept"
+                checked={disclaimerAccepted}
+                onChange={(e) => setDisclaimerAccepted(e.target.checked)}
+                className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+              />
+              <label htmlFor="disclaimer-accept" className="text-gray-300 text-sm leading-relaxed cursor-pointer">
+                I understand and agree to the terms above.
+              </label>
+            </div>
           </div>
         </div>
 
@@ -236,7 +267,7 @@ export function ContributeModal({ campaign, isOpen, onClose, onSuccess }: Contri
           </Button>
           <Button 
             onClick={handleContribute} 
-            disabled={isProcessing || !publicKey || !amount}
+            disabled={isProcessing || !publicKey || !amount || !disclaimerAccepted}
             className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isProcessing ? (
@@ -249,6 +280,8 @@ export function ContributeModal({ campaign, isOpen, onClose, onSuccess }: Contri
                 <Wallet className="mr-2 h-4 w-4" />
                 Connect Wallet First
               </>
+            ) : !disclaimerAccepted ? (
+              'Accept Terms to Continue'
             ) : (
               `Contribute ${amount || '0'} SOL`
             )}

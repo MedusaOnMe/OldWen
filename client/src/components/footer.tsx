@@ -67,8 +67,25 @@ export default function Footer() {
           </div>
         </div>
 
+        {/* Important Disclaimer */}
+        <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg p-6 mt-12">
+          <div className="flex items-start space-x-3">
+            <div className="text-amber-400 mt-1">⚠️</div>
+            <div>
+              <h4 className="text-amber-400 font-semibold text-base mb-3">Important Information</h4>
+              <div className="text-gray-300 text-sm space-y-2 leading-relaxed">
+                <p>• All contributions are final and non-refundable</p>
+                <p>• No refunds are issued if campaigns do not reach their target goal</p>
+                <p>• No credits are issued if tokens fail to graduate from Pump.fun</p>
+                <p>• Only use official contribute buttons - direct wallet transfers are not supported</p>
+                <p>• No guarantees of token performance or campaign success</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Bottom bar */}
-        <div className="border-t border-gray-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+        <div className="border-t border-gray-700 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">
             © 2024 Wendex. All rights reserved.
           </p>
