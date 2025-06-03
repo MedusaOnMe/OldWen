@@ -12,6 +12,9 @@ dotenv.config();
 // Log environment variables for debugging
 console.log('[Server Startup] Environment variables loaded:');
 console.log('[Server Startup] - NODE_ENV:', process.env.NODE_ENV);
+console.log('[Server Startup] - HELIUS_API_KEY exists:', !!process.env.HELIUS_API_KEY);
+console.log('[Server Startup] - HELIUS_API_KEY length:', process.env.HELIUS_API_KEY?.length);
+console.log('[Server Startup] - HELIUS_API_KEY first 8:', process.env.HELIUS_API_KEY?.substring(0, 8));
 if (process.env.NODE_ENV === 'development') {
   console.log('[Server Startup] - Helius integration configured');
 }

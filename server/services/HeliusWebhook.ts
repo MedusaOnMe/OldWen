@@ -34,7 +34,7 @@ interface HeliusWebhookPayload {
     tokenAmount: number;
     mint: string;
   }>;
-  nativeTransfers: Array<{
+  nativeTransfers?: Array<{
     fromUserAccount: string;
     toUserAccount: string;
     amount: number;
@@ -117,23 +117,141 @@ export class HeliusWebhookService {
     try {
       console.log(`Processing transaction: ${transaction.signature}`);
 
-      // Filter for USDC transfers only
+      // Check for SOL transfers first (native balance changes)
+      const solTransfers = this.extractSOLTransfers(transaction);
+      
+      if (solTransfers.length > 0) {
+        // Process SOL transfers
+        for (const transfer of solTransfers) {
+          await this.processSOLTransfer(transaction, transfer);
+        }
+        return;
+      }
+
+      // Fallback to USDC transfers for backward compatibility
       const usdcTransfers = transaction.tokenTransfers?.filter(transfer => 
         transfer.mint === USDC_MINT
       ) || [];
 
-      if (usdcTransfers.length === 0) {
-        console.log(`No USDC transfers in transaction ${transaction.signature}`);
+      if (usdcTransfers.length > 0) {
+        console.log(`Processing USDC transfers in transaction ${transaction.signature}`);
+        for (const transfer of usdcTransfers) {
+          await this.processUSDCTransfer(transaction, transfer);
+        }
         return;
       }
 
-      // Process each USDC transfer
-      for (const transfer of usdcTransfers) {
-        await this.processUSDCTransfer(transaction, transfer);
-      }
+      console.log(`No SOL or USDC transfers in transaction ${transaction.signature}`);
 
     } catch (error) {
       console.error(`Error processing transaction ${transaction.signature}:`, error);
+    }
+  }
+
+  /**
+   * Extract SOL transfers from account data
+   */
+  private extractSOLTransfers(transaction: HeliusWebhookPayload): Array<{
+    fromUserAccount: string;
+    toUserAccount: string;
+    amount: number;
+  }> {
+    const transfers = [];
+    
+    // Check nativeTransfers if available
+    if (transaction.nativeTransfers && transaction.nativeTransfers.length > 0) {
+      return transaction.nativeTransfers;
+    }
+
+    // Extract from accountData balance changes
+    const accounts = transaction.accountData || [];
+    const positiveChanges = accounts.filter(acc => acc.nativeBalanceChange > 0);
+    const negativeChanges = accounts.filter(acc => acc.nativeBalanceChange < 0);
+
+    for (const positive of positiveChanges) {
+      for (const negative of negativeChanges) {
+        if (Math.abs(positive.nativeBalanceChange) === Math.abs(negative.nativeBalanceChange)) {
+          transfers.push({
+            fromUserAccount: negative.account,
+            toUserAccount: positive.account,
+            amount: positive.nativeBalanceChange
+          });
+        }
+      }
+    }
+
+    return transfers;
+  }
+
+  /**
+   * Process SOL transfer and update campaign if relevant
+   */
+  private async processSOLTransfer(
+    transaction: HeliusWebhookPayload,
+    transfer: {
+      fromUserAccount: string;
+      toUserAccount: string;
+      amount: number;
+    }
+  ): Promise<void> {
+    try {
+      // Check if destination is a campaign wallet
+      const campaignWallet = await this.findCampaignByWallet(transfer.toUserAccount);
+      
+      if (!campaignWallet) {
+        console.log(`SOL transfer to ${transfer.toUserAccount} - not a campaign wallet`);
+        return;
+      }
+
+      const campaignId = campaignWallet.campaignId;
+      const amount = transfer.amount / 1e9; // Convert lamports to SOL
+
+      console.log(`SOL transfer detected: ${amount} SOL to campaign ${campaignId}`);
+
+      // Verify the transaction properly
+      const verification = await transactionVerificationService.verifyTransaction(
+        transaction.signature,
+        campaignId,
+        amount
+      );
+
+      if (!verification.valid) {
+        console.warn(`SOL transaction verification failed for ${transaction.signature}:`, verification.error);
+        return;
+      }
+
+      // Check for suspicious activity
+      const suspiciousActivity = await transactionVerificationService.detectSuspiciousActivity(
+        transfer.fromUserAccount,
+        amount,
+        campaignId
+      );
+
+      if (suspiciousActivity.suspicious) {
+        console.warn(`Suspicious SOL activity detected for transaction ${transaction.signature}:`, suspiciousActivity.reasons);
+        await this.recordSuspiciousActivity(transaction.signature, campaignId, suspiciousActivity);
+      }
+
+      // Record the contribution
+      await this.recordSOLContribution(transaction, transfer, campaignId, verification);
+
+      // Update campaign balance (convert SOL to USD equivalent if needed)
+      await this.updateCampaignBalance(campaignId, amount);
+
+      // Send real-time updates
+      this.broadcastUpdate(campaignId, {
+        type: 'new_contribution',
+        signature: transaction.signature,
+        amount,
+        contributor: transfer.fromUserAccount,
+        timestamp: new Date(transaction.timestamp * 1000),
+        currency: 'SOL'
+      });
+
+      console.log(`Successfully processed SOL contribution: ${amount} SOL to campaign ${campaignId}`);
+
+    } catch (error) {
+      console.error('Error processing SOL transfer:', error);
     }
   }
 
@@ -228,7 +346,43 @@ export class HeliusWebhookService {
   }
 
   /**
-   * Record contribution in database
+   * Record SOL contribution in database
+   */
+  private async recordSOLContribution(
+    transaction: HeliusWebhookPayload,
+    transfer: {
+      fromUserAccount: string;
+      toUserAccount: string;
+      amount: number;
+    },
+    campaignId: string,
+    verification: any
+  ): Promise<void> {
+    try {
+      const contributionRef = db.collection(collections.contributions).doc();
+      const contribution = {
+        id: contributionRef.id,
+        campaignId,
+        contributorAddress: transfer.fromUserAccount,
+        amount: verification.amount,
+        transactionHash: transaction.signature,
+        timestamp: new Date(transaction.timestamp * 1000),
+        status: 'confirmed',
+        blockHeight: transaction.slot,
+        verificationMethod: 'helius_webhook',
+        currency: 'SOL'
+      };
+
+      await contributionRef.set(contribution);
+      console.log(`SOL Contribution recorded: ${contribution.id}`);
+
+    } catch (error) {
+      console.error('Error recording SOL contribution:', error);
+    }
+  }
+
+  /**
+   * Record USDC contribution in database
    */
   private async recordContribution(
     transaction: HeliusWebhookPayload,
