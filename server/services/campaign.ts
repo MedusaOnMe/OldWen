@@ -191,13 +191,18 @@ export class CampaignService {
   
   private async setupCampaignMonitoring(campaignId: string, walletAddress: string) {
     try {
+      console.log(`[Campaign Creation] Setting up monitoring for campaign ${campaignId}`);
+      console.log(`[Campaign Creation] Wallet address: ${walletAddress}`);
+      
       // Set up Helius webhook monitoring
+      console.log(`[Campaign Creation] Setting up Helius webhook...`);
       await heliusWebhookService.setupWebhookForCampaign(campaignId, walletAddress);
       
-      // Start transaction verification monitoring
+      // Start transaction verification monitoring (this creates the actual webhook)
+      console.log(`[Campaign Creation] Starting transaction verification monitoring...`);
       await transactionVerificationService.monitorCampaignWallet(campaignId, walletAddress);
       
-      console.log(`Monitoring setup complete for campaign ${campaignId}`);
+      console.log(`[Campaign Creation] Monitoring setup complete for campaign ${campaignId}`);
     } catch (error) {
       console.error(`Failed to setup monitoring for campaign ${campaignId}:`, error);
       
