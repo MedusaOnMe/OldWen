@@ -385,6 +385,9 @@ export class TransactionVerificationService {
   private async setupHeliusWebhook(walletAddress: string): Promise<void> {
     try {
       const webhookUrl = process.env.HELIUS_WEBHOOK_URL;
+      console.log(`[Webhook Setup] Using webhook URL: ${webhookUrl}`);
+      console.log(`[Webhook Setup] Setting up for wallet: ${walletAddress}`);
+      
       if (!webhookUrl) {
         console.warn('HELIUS_WEBHOOK_URL not configured, falling back to polling');
         return;
@@ -400,7 +403,8 @@ export class TransactionVerificationService {
         }
       );
 
-      console.log(`Helius webhook configured for wallet ${walletAddress}:`, response.data);
+      console.log(`[Webhook Setup] Success! Webhook ID: ${response.data.webhookID}`);
+      console.log(`[Webhook Setup] Response:`, response.data);
     } catch (error) {
       console.error('Failed to set up Helius webhook:', error);
     }

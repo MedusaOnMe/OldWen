@@ -7,6 +7,7 @@ import { transactionVerificationService } from '../services/TransactionVerificat
 import { heliusWebhookService } from '../services/HeliusWebhook.js';
 import { getPrivateKeyForAdmin } from '../services/solana.js';
 import { z } from 'zod';
+import axios from 'axios';
 
 const router = Router();
 const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY;
@@ -519,6 +520,74 @@ router.post('/platform/resume', async (req, res) => {
   } catch (error) {
     console.error('Platform resume error:', error);
     res.status(500).json({ error: 'Failed to resume platform' });
+  }
+});
+
+// Update existing webhooks to use correct URL
+router.post('/update-webhooks', async (req, res) => {
+  try {
+    const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
+    const correctWebhookUrl = process.env.HELIUS_WEBHOOK_URL;
+    
+    if (!HELIUS_API_KEY || !correctWebhookUrl) {
+      return res.status(500).json({ error: 'Missing API key or webhook URL' });
+    }
+
+    // Get all existing webhooks
+    const webhooksResponse = await axios.get(
+      `https://api.helius.xyz/v0/webhooks?api-key=${HELIUS_API_KEY}`
+    );
+
+    const webhooks = webhooksResponse.data;
+    const results = [];
+
+    for (const webhook of webhooks) {
+      if (webhook.webhookURL !== correctWebhookUrl) {
+        try {
+          // Update the webhook URL
+          await axios.put(
+            `https://api.helius.xyz/v0/webhooks/${webhook.webhookID}?api-key=${HELIUS_API_KEY}`,
+            {
+              webhookURL: correctWebhookUrl,
+              transactionTypes: webhook.transactionTypes,
+              accountAddresses: webhook.accountAddresses,
+              webhookType: webhook.webhookType
+            }
+          );
+          
+          results.push({
+            webhookID: webhook.webhookID,
+            oldURL: webhook.webhookURL,
+            newURL: correctWebhookUrl,
+            status: 'updated'
+          });
+        } catch (updateError) {
+          results.push({
+            webhookID: webhook.webhookID,
+            oldURL: webhook.webhookURL,
+            status: 'error',
+            error: updateError.message
+          });
+        }
+      } else {
+        results.push({
+          webhookID: webhook.webhookID,
+          url: webhook.webhookURL,
+          status: 'already_correct'
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      correctWebhookUrl,
+      totalWebhooks: webhooks.length,
+      results
+    });
+
+  } catch (error) {
+    console.error('Update webhooks error:', error);
+    res.status(500).json({ error: 'Failed to update webhooks' });
   }
 });
 
