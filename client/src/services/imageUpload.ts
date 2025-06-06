@@ -77,14 +77,49 @@ export class ImageUploadService {
       const img = new Image();
       
       img.onload = () => {
-        // Calculate compressed dimensions (max 800px width)
-        const maxWidth = 800;
-        const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
-        canvas.width = img.width * ratio;
-        canvas.height = img.height * ratio;
+        // Detect if this is a banner (3:1 ratio) vs logo (1:1 ratio)
+        const originalAspectRatio = img.width / img.height;
+        const isBanner = originalAspectRatio >= 2.8 && originalAspectRatio <= 3.2;
+        const isLogo = originalAspectRatio >= 0.8 && originalAspectRatio <= 1.2;
+        
+        let targetWidth: number;
+        let targetHeight: number;
+        
+        if (isBanner) {
+          // For banners, maintain exact 3:1 ratio
+          const maxWidth = 800;
+          if (img.width > maxWidth) {
+            targetWidth = maxWidth;
+            targetHeight = Math.round(maxWidth / 3); // Ensure exact 3:1
+          } else {
+            targetWidth = img.width;
+            targetHeight = img.height;
+          }
+        } else if (isLogo) {
+          // For logos, maintain exact 1:1 ratio
+          const maxSize = 800;
+          if (img.width > maxSize || img.height > maxSize) {
+            const size = Math.min(maxSize, Math.min(img.width, img.height));
+            targetWidth = size;
+            targetHeight = size; // Ensure exact 1:1
+          } else {
+            const size = Math.min(img.width, img.height);
+            targetWidth = size;
+            targetHeight = size;
+          }
+        } else {
+          // For other images, use original resizing logic
+          const maxWidth = 800;
+          const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
+          targetWidth = img.width * ratio;
+          targetHeight = img.height * ratio;
+        }
+        
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
         
         // Draw and compress
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        ctx?.drawImage(img, 0, 0, targetWidth, targetHeight);
         
         // Convert to base64 with compression (0.7 quality)
         const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);

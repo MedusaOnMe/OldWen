@@ -1,3 +1,6 @@
-2025/06/06-11:35:47.117 3a0be7 Reusing MANIFEST /Users/benhemple/Documents/Projects/WenDex/chrome-profile-dexscreener/Default/shared_proto_db/MANIFEST-000001
-2025/06/06-11:35:47.117 3a0be7 Recovering log #3
-2025/06/06-11:35:47.122 3a0be7 Reusing old log /Users/benhemple/Documents/Projects/WenDex/chrome-profile-dexscreener/Default/shared_proto_db/000003.log 
+2025/06/06-16:02:59.021 42b27d Reusing MANIFEST /Users/benhemple/Documents/WenDex/chrome-profile-dexscreener/Default/shared_proto_db/MANIFEST-000001
+2025/06/06-16:02:59.021 42b27d Recovering log #3
+2025/06/06-16:02:59.022 42b27d Reusing old log /Users/benhemple/Documents/WenDex/chrome-profile-dexscreener/Default/shared_proto_db/000003.log 
+2025/06/06-16:02:59.065 42b27f Level-0 table #5: started
+2025/06/06-16:02:59.069 42b27f Level-0 table #5: 70850 bytes OK
+2025/06/06-16:02:59.073 42b27f Delete type=0 #3
