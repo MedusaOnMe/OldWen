@@ -129,5 +129,15 @@
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
+  },
+  "overrides": {
+    "qrcode.react": {
+      "react": "^18.3.1",
+      "react-dom": "^18.3.1"
+    },
+    "react-qr-reader": {
+      "react": "^18.3.1",
+      "react-dom": "^18.3.1"
+    }
   }
 }
