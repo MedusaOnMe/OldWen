@@ -1,0 +1,2 @@
+import{Za as t}from"./chunk-M4V43KDP.js";import{K as i,fa as m}from"./chunk-HG4P4WCJ.js";import{a as h}from"./chunk-O2FNG2JZ.js";import{f as s,h as o,n}from"./chunk-3KENBVE7.js";o();n();var e=s(h()),u=e.default.memo(({networkID:a,backgroundColor:p="white",...c})=>{let r=`Network${t.getChainName(a)}`;return r in i?e.default.createElement(m,{...c,icon:r,shape:"square",backgroundColor:p}):null});o();n();export{u as a};
+//# sourceMappingURL=chunk-QPRXGMQJ.js.map

